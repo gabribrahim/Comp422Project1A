@@ -82,6 +82,7 @@ public class MainController {
 	public void saveCharts() {
 		//This Functions will save a chart for the current KNN used in the UI
 		// With the X-Axis & Y-Axis Combinations below.
+		scatterChart.setAnimated(false);
 		xAxisFeature 										= "Petal Width";
 		yAxisFeature										= "Sepal Width";
 		saveChartForFeatureCombination();
@@ -100,7 +101,7 @@ public class MainController {
 		xAxisFeature 										= "Sepal Length";
 		yAxisFeature										= "Petal Width";
 		saveChartForFeatureCombination();				
-		
+		scatterChart.setAnimated(true);
 	}
 
 
