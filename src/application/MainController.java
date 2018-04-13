@@ -128,8 +128,10 @@ public class MainController {
 		int count					= 1;
 		int correctPrediction		= 0;		
 		int trainingInstancesCount	= myDataLoader.trainingDataSetList.size();
+		System.out.println("Test Instance Index,Label Class,Predicted Class");
 		for (LabelledDataInstance testInstance : myDataLoader.testDataSetList) {
 			// getting X & Y values based on current Axis Features Selected
+			int index				= myDataLoader.testDataSetList.indexOf(testInstance);
 			float testXfeature		= testInstance.featureListAsValues.get(featuresList.indexOf(xAxisFeature));
 			float testYfeature		= testInstance.featureListAsValues.get(featuresList.indexOf(yAxisFeature));
 			
@@ -147,6 +149,7 @@ public class MainController {
 				chartSeries.get("WrongPredictions").getData().add(new Data<Number,Number>(testXfeature,testYfeature));
 			}
 			count++;
+			System.out.println(index+","+testInstance.labelName+","+predictedClass+"");
 		}
 		// Calculating Accuracy measure
 		myDataLoader.myclassifier.accuracy					= ((double)correctPrediction/(double)trainingInstancesCount)*100.0;				
