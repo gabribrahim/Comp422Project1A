@@ -39,8 +39,13 @@ public class DataSetsLoader {
 		this.maxValuesForFeatures.clear();
 	}
 	
-	
+	public void clearRanges() {
+		this.minValuesForFeatures.clear();
+		this.maxValuesForFeatures.clear();
+		
+	}
 	public void computeRangeForFeaturesInDataSet() {
+
 		// Fill Minimum & Max Values For Features with Zero Lists Matching Count of Features
 		for (int i=0 ; i<trainingDataSetList.get(0).featureListAsValues.size(); i++){
 			minValuesForFeatures.add((float)100000000000000000000000000000.0);

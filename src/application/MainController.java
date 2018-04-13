@@ -26,6 +26,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import model.DataSetsLoader;
+import model.KMeansClassifier;
 import model.KnnClassifier;
 import model.LabelledDataInstance;
 
@@ -36,6 +37,7 @@ public class MainController {
 	@FXML private  HBox ChartBox;
 	@FXML private  TextField KnnTF;
 	@FXML private AnchorPane RootAP;
+	@FXML private TextField KmeansIterTF;
 	private Main main;
 	private DataSetsLoader myDataLoader = new DataSetsLoader();
 	
@@ -44,6 +46,8 @@ public class MainController {
 	public List<String> featuresList = new ArrayList<String>();
 	public String xAxisFeature; 
 	public String yAxisFeature ;	
+	public KMeansClassifier kmeansClassifier;
+	public HashMap<String,Integer> axisOptions		= new HashMap<String,Integer>();
 	
 	
 	@SuppressWarnings("static-access")
@@ -53,7 +57,11 @@ public class MainController {
 		featuresList.add("Petal Width");
 		featuresList.add("Petal Length");
 		featuresList.add("Sepal Width");
-		featuresList.add("Sepal Length");	
+		featuresList.add("Sepal Length");
+		axisOptions.put("Petal Length", 0);
+		axisOptions.put("Petal Width", 1);
+		axisOptions.put("Sepal Length", 2);
+		axisOptions.put("Sepal Width", 3);		
 		xAxisFeature = "Petal Length";
 		yAxisFeature = "Sepal Length";
 		final NumberAxis xAxis = new NumberAxis(0, 0, 0.1);
@@ -164,6 +172,45 @@ public class MainController {
 //		System.out.println(this.MainLabel);
 	}
 	
+	public void updateClustersForNIterations() {
+		int iterations					= Integer.parseInt(KmeansIterTF.getText());
+		for (int i=0; i<iterations; i++) {
+			kmeansClassifier.recomputerCentroids();
+			boolean converged			= kmeansClassifier.checkForConvergence();
+			if (converged) {
+				StatusTA.setText(kmeansClassifier.reportOnClusters()+
+						"Clusters Have Converged !!");
+				return;
+			}
+			else {
+				kmeansClassifier.updateCentroids();
+			}
+			kmeansClassifier.clearClusterMap();
+			kmeansClassifier.updateCluster();
+			StatusTA.setText(kmeansClassifier.reportOnClusters());
+			plotClusterPoints();
+		}
+	}
+	public void ClusterByKMeans() {
+		myDataLoader.trainingDataSetList.addAll(myDataLoader.testDataSetList);
+		myDataLoader.testDataSetList.clear();
+		System.out.println(myDataLoader.trainingDataSetList.size());
+		scatterChart.getData().clear();
+		plotIrisTrainingSetOnChart(xAxisFeature,yAxisFeature);
+		StatusTA.setText("Merged Data Sets Total = " + myDataLoader.trainingDataSetList.size()+"\n");
+		myDataLoader.clearRanges();
+	
+		myDataLoader.computeRangeForFeaturesInDataSet();
+		kmeansClassifier			= new KMeansClassifier(myDataLoader);
+		kmeansClassifier.initialiseRandomClusters();
+		System.out.println(kmeansClassifier.clusterPoints);
+		kmeansClassifier.updateCluster();
+		StatusTA.appendText(myDataLoader.toString());
+		StatusTA.appendText(kmeansClassifier.reportOnClusters());
+		System.out.println(kmeansClassifier.clusterPoints);
+		plotClusterPoints();
+		
+	}
 	private String promptUserForChoice(List<String> dialogData,String message) {		
 		ChoiceDialog<String> dialog = new ChoiceDialog<String>(dialogData.get(0), dialogData);
 		dialog.setTitle("");
@@ -210,25 +257,46 @@ public class MainController {
 	}
 	
 	
+	public void plotClusterPoints() {
+		int xAxisFeatureIndex					= axisOptions.get(xAxisFeature);
+		int yAxisFeatureIndex					= axisOptions.get(yAxisFeature);
+		chartSeries.get("ClusterPoints").getData().clear();
+		
+		// For QuickNess I have Mapped the 3 Classes Graph Series Randomly To Clusters
+		// That way I dont have to add 3 more different colours to the chart 
+		HashMap<String,XYChart.Series<Number,Number>> clusterSeries = new HashMap<>();
+		clusterSeries.put("Cluster0", chartSeries.get("Iris-versicolor"));
+		clusterSeries.put("Cluster1", chartSeries.get("Iris-virginica"));
+		clusterSeries.put("Cluster2", chartSeries.get("Iris-setosa"));
+		for (String classLabel : myDataLoader.dataSetClasses) {			
+			chartSeries.get(classLabel).getData().clear();			
+		}
+		for (LabelledDataInstance cluster : kmeansClassifier.clusterPoints) {
+			float floatx = cluster.featureListAsValues.get(xAxisFeatureIndex);
+			float floaty = cluster.featureListAsValues.get(yAxisFeatureIndex);
+			for (LabelledDataInstance dataInstance : kmeansClassifier.clusterMap.get(cluster.labelName)) {
+				float floatx2 = dataInstance.featureListAsValues.get(xAxisFeatureIndex);
+				float floaty2 = dataInstance.featureListAsValues.get(yAxisFeatureIndex);			
+				clusterSeries.get(cluster.labelName).getData().add(new Data<Number,Number>(floatx2,floaty2));				
+			}
+			chartSeries.get("ClusterPoints").getData().add(new Data<Number,Number>(floatx,floaty));
+			}			
+	}
 	public void plotIrisTrainingSetOnChart(String xAxisFeature, String yAxisFeature) {
-		// Pragmatically Adding TheLabels of The Data Set as Chart Series Key = String Value = XYChart.Series
+		// Adding TheLabels of The Data Set as Chart Series Key = String Value = XYChart.Series
 		// Later On Referenced for Plotting Correct & Wrong Predictions
 		for (String classLabel : myDataLoader.dataSetClasses) {
 			XYChart.Series<Number,Number> newSeries	= new XYChart.Series<>();
 			newSeries.setName(classLabel);
 			chartSeries.put(classLabel, newSeries);
-			newSeries.getData().add(new Data<Number,Number>(0,0)); //TODO Look into bug where Icons don't show for empty series
+			newSeries.getData().add(new Data<Number,Number>(0,0)); 
 			scatterChart.getData().add(newSeries);
 			
 		}
 		
 		// Creating a HashMap For FeatureList Manually as Data did not have a header row
 		// Later On Used in changeAxisFeature to allow user to plot relationships between different features of the dataSet
-		HashMap<String,Integer> axisOptions		= new HashMap<String,Integer>();
-		axisOptions.put("Petal Length", 0);
-		axisOptions.put("Petal Width", 1);
-		axisOptions.put("Sepal Length", 2);
-		axisOptions.put("Sepal Width", 3);
+
 		
 		int xAxisFeatureIndex					= axisOptions.get(xAxisFeature);
 		int yAxisFeatureIndex					= axisOptions.get(yAxisFeature);
@@ -243,17 +311,25 @@ public class MainController {
 			float floaty = dataInstance.featureListAsValues.get(yAxisFeatureIndex);			
 			chartSeries.get(dataInstance.labelName).getData().add(new Data<Number,Number>(floatx,floaty));
 		}
-		// Adding One Last Series To The Chart for Wrong Predictions
+		// Adding Series To The Chart for Wrong Predictions
 		XYChart.Series<Number,Number> wrongPredictions	= new XYChart.Series<>();
 		wrongPredictions.getData().add(new Data<Number,Number>(0,0));
 		wrongPredictions.setName("Wrong Predictions");
 		chartSeries.put("WrongPredictions",wrongPredictions);
 		scatterChart.getData().add(wrongPredictions);
 		
+		// Adding Clusters Series To The Chart For KMEANS Representation
+		XYChart.Series<Number,Number> clusterPointsSeries	= new XYChart.Series<>();
+		clusterPointsSeries.getData().add(new Data<Number,Number>(0,0));
+		clusterPointsSeries.setName("ClusterPoints");
+		chartSeries.put("ClusterPoints",clusterPointsSeries);
+		scatterChart.getData().add(clusterPointsSeries);
+		chartSeries.put("ClusterPoints", clusterPointsSeries);
 		
 		// Setting Axis Labels provided by the function input from changeAxisFeature
 		scatterChart.getXAxis().setLabel(xAxisFeature);
 		scatterChart.getYAxis().setLabel(yAxisFeature);
+		
 		
 	}
 }
