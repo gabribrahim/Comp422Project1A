@@ -23,7 +23,7 @@
             </Lighting>
          </effect>
       </Region>
-      <Label id="MainLabel" fx:id="MainLabel" layoutX="17.0" layoutY="1.0" prefHeight="64.0" prefWidth="1004.0" text="Assignment 1 Question 1" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0">
+      <Label id="MainLabel" fx:id="MainLabel" layoutX="17.0" layoutY="1.0" prefHeight="64.0" prefWidth="1004.0" text="Assignment 3 Question 2" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0">
          <font>
             <Font name="Andalus" size="29.0" />
          </font>
@@ -55,16 +55,15 @@
          <children>
             <VBox prefHeight="200.0" prefWidth="275.0">
                <children>
-                  <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#LoadIrisDataSet" prefWidth="755.0" text="Load Iris Data Set" />
-                  <Button fx:id="ChangeAxisBTN" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#changeAxisFeature" prefWidth="755.0" text="Change Axis Features">
+                  <Button alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Load Labelled Data" />
+                  <Button fx:id="ChangeAxisBTN" alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Compute Count Table">
                      <VBox.margin>
                         <Insets />
                      </VBox.margin>
                   </Button>
-                  <Button id="ComputeKnnBTN" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#computeKnn" prefWidth="755.0" text="Compute KNN" />
-                  <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#saveCharts" prefWidth="755.0" text="Save KNN Charts To PNG" />
-                  <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#ClusterByKMeans" prefWidth="755.0" text="Initialize K-Means Classifier" />
-                  <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#updateClustersForNIterations" prefWidth="755.0" text="Update Clusters For N Iterations" />
+                  <Button id="ComputeKnnBTN" alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Computer Probability Table" />
+                  <Button alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Load Unlabelled Data" />
+                  <Button alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Write Sample Output" />
                   <TextArea fx:id="StatusTA" maxWidth="-Infinity" prefHeight="200.0" prefWidth="275.0" VBox.vgrow="ALWAYS" />
                </children>
             </VBox>

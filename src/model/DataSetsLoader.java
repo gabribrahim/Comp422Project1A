@@ -44,29 +44,46 @@ public class DataSetsLoader {
 		this.maxValuesForFeatures.clear();
 		
 	}
-	public void computeRangeForFeaturesInDataSet() {
-
-		// Fill Minimum & Max Values For Features with Zero Lists Matching Count of Features
-		for (int i=0 ; i<trainingDataSetList.get(0).featureListAsValues.size(); i++){
-			minValuesForFeatures.add((float)100000000000000000000000000000.0);
-			maxValuesForFeatures.add((float)0.0);
-		}
-		// Iterate Through the DataSet to Populate the minimum and maximum ranges
-		for (LabelledDataInstance dataInstance: trainingDataSetList) {
-			for (int i=0 ; i<dataInstance.featureListAsValues.size(); i++){
-				//Minimum
-				if(dataInstance.featureListAsValues.get(i)<minValuesForFeatures.get(i)) {
-					minValuesForFeatures.set(i, dataInstance.featureListAsValues.get(i));					
-				}
-				//Maximum
-				if(dataInstance.featureListAsValues.get(i)>maxValuesForFeatures.get(i)) {
-					maxValuesForFeatures.set(i, dataInstance.featureListAsValues.get(i));					
-				}				
-			}
+	public String loadEmailData(String filePath, ArrayList<LabelledDataInstance> dataSetList, Boolean dataIslabelled) {		
+		
+		File fileObj 								= new File(filePath);
+		//Reading File Contents & Creating Java Representation Objects for DataSet For Classifier Classes//
+		try (FileReader fileReader = new FileReader(fileObj);
+				BufferedReader bufferedReader		= new BufferedReader(fileReader);){
+			String line 							= bufferedReader.readLine();
 			
+			while (line != null) {
+				String[] lineParts 					= line.split("     ");
+				
+				List<String> lineList 				= Arrays.asList(lineParts);
+//				lineList.remove(" ");
+				String featureLabel;
+				List<String> featuresList;
+				if (dataIslabelled) {
+					featureLabel 					= lineList.get(lineList.size() - 1);
+					featuresList 					= lineList.subList(0, lineList.size() - 1);
+				}else {
+					featureLabel 					= "";
+					featuresList 					= lineList.subList(0, lineList.size());
+				}
+				System.out.println(featuresList);
+				LabelledDataInstance dataInstance 	= new LabelledDataInstance(featuresList, featureLabel);
+				dataSetClasses.add(featureLabel);
+				dataInstance.parseInformationToValues(); // Converts Strings to Floats
+				dataSetList.add(dataInstance);
+				System.out.println(dataInstance+"\n"+featuresList.size()+"<>"+dataInstance.featureListAsValues.size());
+				
+				line 								= bufferedReader.readLine();
+			}			
+		} catch (IOException e) {
+			System.out.println("FILE NOT FOUND !!");
 		}
-		System.out.println(toString());
+		
+		String report								= toString();
+		return report;
 	}
+
+	
 	public String loadIrisDataSet(String filePath, ArrayList<LabelledDataInstance> dataSetList) {		
 		
 		File fileObj 								= new File(filePath);

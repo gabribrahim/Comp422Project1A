@@ -4,11 +4,10 @@ package model;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LabelledDataInstance implements Comparable<LabelledDataInstance>{
+public class LabelledDataInstance <LabelledDataInstance>{
 	public List<String> featuresListAsStrings;
 	public String labelName;
-	public ArrayList<Float> featureListAsValues;
-	public double euclideanNormalisedDistance = 0.0 ;
+	public ArrayList<Boolean> featureListAsValues;	
 	public String predictedClass;
 	public LabelledDataInstance(List<String> featuresList, String labelName) {	
 		super();
@@ -20,24 +19,25 @@ public class LabelledDataInstance implements Comparable<LabelledDataInstance>{
 	@Override
 	public String toString() {
 		return "LabelledDataInstance [labelName=" + labelName + ", featureListAsValues=" + featureListAsValues + " "
-				+ "Distance= "+euclideanNormalisedDistance +"]";
+				+"]";
 	}
 
 	public void parseInformationToValues() {
-		featureListAsValues					= new ArrayList<Float>();
+		featureListAsValues					= new ArrayList<Boolean>();
 		for (String string : featuresListAsStrings) {
-			featureListAsValues.add(Float.parseFloat(string));
+//			System.out.println(string);
+			if(string.contains("0")) {
+				featureListAsValues.add(false);
+			}else if(string.contains("1")) {
+				featureListAsValues.add(true);
+			}else {
+				featureListAsValues.add(false);
+			}
+			
 		}
 	}
 
-	@Override
-	public int compareTo(LabelledDataInstance otherLabelledDataInstance) {
-		if (this.euclideanNormalisedDistance > otherLabelledDataInstance.euclideanNormalisedDistance) {return 1;}
-		if (this.euclideanNormalisedDistance < otherLabelledDataInstance.euclideanNormalisedDistance) {return -1;}
-//		System.out.print(this.euclideanNormalisedDistance < otherLabelledDataInstance.euclideanNormalisedDistance);
-//		System.out.println(this.euclideanNormalisedDistance + " " + otherLabelledDataInstance.euclideanNormalisedDistance);
-		return 0;
-	}
+
 
 
 	
