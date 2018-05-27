@@ -1,0 +1,124 @@
+Instance [ 0 ]
+[true, true, false, false, true, true, false, false, false, false, false, false]
+P(S|D)  = P(Feature0=true|S).P(Feature1=true|S).P(Feature2=false|S).P(Feature3=false|S).P(Feature4=true|S).P(Feature5=true|S).P(Feature6=false|S).P(Feature7=false|S).P(Feature8=false|S).P(Feature9=false|S).P(Feature10=false|S).P(Feature11=false|S).P(S)
+P(S`|D) = P(Feature0=true|S`).P(Feature1=true|S`).P(Feature2=false|S`).P(Feature3=false|S`).P(Feature4=true|S`).P(Feature5=true|S`).P(Feature6=false|S`).P(Feature7=false|S`).P(Feature8=false|S`).P(Feature9=false|S`).P(Feature10=false|S`).P(Feature11=false|S`).P(S`)
+
+P(S|D)  = 34/51 X 30/51 X 28/51 X 20/51 X 25/51 X 18/51 X 11/51 X 12/51 X 34/51 X 17/51 X 17/51 X 11/51 X 51/200
+P(S`|D) = 53/149 X 86/149 X 98/149 X 90/149 X 50/149 X 70/149 X 74/149 X 97/149 X 113/149 X 106/149 X 62/149 X 99/149 X 149/200
+P(S|D)  = 0.00000302024546
+P(S`|D) = 0.00046200500219
+Class   = NOTSPAM
+Since Prob of Spam < Prob of No Spam, then email is classified as NOTSPAM
+========================================================================
+Instance [ 1 ]
+[false, false, true, true, false, false, true, true, true, false, false, true]
+P(S|D)  = P(Feature0=false|S).P(Feature1=false|S).P(Feature2=true|S).P(Feature3=true|S).P(Feature4=false|S).P(Feature5=false|S).P(Feature6=true|S).P(Feature7=true|S).P(Feature8=true|S).P(Feature9=false|S).P(Feature10=false|S).P(Feature11=true|S).P(S)
+P(S`|D) = P(Feature0=false|S`).P(Feature1=false|S`).P(Feature2=true|S`).P(Feature3=true|S`).P(Feature4=false|S`).P(Feature5=false|S`).P(Feature6=true|S`).P(Feature7=true|S`).P(Feature8=true|S`).P(Feature9=false|S`).P(Feature10=false|S`).P(Feature11=true|S`).P(S`)
+
+P(S|D)  = 17/51 X 21/51 X 23/51 X 31/51 X 26/51 X 33/51 X 40/51 X 39/51 X 17/51 X 17/51 X 17/51 X 40/51 X 51/200
+P(S`|D) = 96/149 X 63/149 X 51/149 X 59/149 X 99/149 X 79/149 X 75/149 X 52/149 X 36/149 X 106/149 X 62/149 X 50/149 X 149/200
+P(S|D)  = 0.00005514099757
+P(S`|D) = 0.00004085563705
+Class   = SPAM
+Since Prob of Spam > Prob of No Spam, then email is classified as SPAM
+
+========================================================================
+Instance [ 2 ]
+[true, true, true, true, true, false, true, false, false, false, true, true]
+P(S|D)  = P(Feature0=true|S).P(Feature1=true|S).P(Feature2=true|S).P(Feature3=true|S).P(Feature4=true|S).P(Feature5=false|S).P(Feature6=true|S).P(Feature7=false|S).P(Feature8=false|S).P(Feature9=false|S).P(Feature10=true|S).P(Feature11=true|S).P(S)
+P(S`|D) = P(Feature0=true|S`).P(Feature1=true|S`).P(Feature2=true|S`).P(Feature3=true|S`).P(Feature4=true|S`).P(Feature5=false|S`).P(Feature6=true|S`).P(Feature7=false|S`).P(Feature8=false|S`).P(Feature9=false|S`).P(Feature10=true|S`).P(Feature11=true|S`).P(S`)
+
+P(S|D)  = 34/51 X 30/51 X 23/51 X 31/51 X 25/51 X 33/51 X 40/51 X 12/51 X 34/51 X 17/51 X 34/51 X 40/51 X 51/200
+P(S`|D) = 53/149 X 86/149 X 51/149 X 59/149 X 50/149 X 79/149 X 75/149 X 97/149 X 113/149 X 106/149 X 87/149 X 50/149 X 149/200
+P(S|D)  = 0.00018644460943
+P(S`|D) = 0.00012776775111
+Class   = SPAM
+Since Prob of Spam > Prob of No Spam, then email is classified as SPAM
+
+========================================================================
+Instance [ 3 ]
+[false, true, false, false, false, false, true, false, true, false, false, false]
+P(S|D)  = P(Feature0=false|S).P(Feature1=true|S).P(Feature2=false|S).P(Feature3=false|S).P(Feature4=false|S).P(Feature5=false|S).P(Feature6=true|S).P(Feature7=false|S).P(Feature8=true|S).P(Feature9=false|S).P(Feature10=false|S).P(Feature11=false|S).P(S)
+P(S`|D) = P(Feature0=false|S`).P(Feature1=true|S`).P(Feature2=false|S`).P(Feature3=false|S`).P(Feature4=false|S`).P(Feature5=false|S`).P(Feature6=true|S`).P(Feature7=false|S`).P(Feature8=true|S`).P(Feature9=false|S`).P(Feature10=false|S`).P(Feature11=false|S`).P(S`)
+
+P(S|D)  = 17/51 X 30/51 X 28/51 X 20/51 X 26/51 X 33/51 X 40/51 X 12/51 X 17/51 X 17/51 X 17/51 X 11/51 X 51/200
+P(S`|D) = 96/149 X 86/149 X 98/149 X 90/149 X 99/149 X 79/149 X 75/149 X 97/149 X 36/149 X 106/149 X 62/149 X 99/149 X 149/200
+P(S|D)  = 0.00000523509198
+P(S`|D) = 0.00060379534261
+Class   = NOTSPAM
+Since Prob of Spam < Prob of No Spam, then email is classified as NOTSPAM
+========================================================================
+Instance [ 4 ]
+[true, true, true, false, true, true, false, true, false, false, true, true]
+P(S|D)  = P(Feature0=true|S).P(Feature1=true|S).P(Feature2=true|S).P(Feature3=false|S).P(Feature4=true|S).P(Feature5=true|S).P(Feature6=false|S).P(Feature7=true|S).P(Feature8=false|S).P(Feature9=false|S).P(Feature10=true|S).P(Feature11=true|S).P(S)
+P(S`|D) = P(Feature0=true|S`).P(Feature1=true|S`).P(Feature2=true|S`).P(Feature3=false|S`).P(Feature4=true|S`).P(Feature5=true|S`).P(Feature6=false|S`).P(Feature7=true|S`).P(Feature8=false|S`).P(Feature9=false|S`).P(Feature10=true|S`).P(Feature11=true|S`).P(S`)
+
+P(S|D)  = 34/51 X 30/51 X 23/51 X 20/51 X 25/51 X 18/51 X 11/51 X 39/51 X 34/51 X 17/51 X 34/51 X 40/51 X 51/200
+P(S`|D) = 53/149 X 86/149 X 51/149 X 90/149 X 50/149 X 70/149 X 74/149 X 52/149 X 113/149 X 106/149 X 87/149 X 50/149 X 149/200
+P(S|D)  = 0.00005863982733
+P(S`|D) = 0.00009134500579
+Class   = NOTSPAM
+Since Prob of Spam < Prob of No Spam, then email is classified as NOTSPAM
+========================================================================
+Instance [ 5 ]
+[true, true, true, true, true, true, false, false, false, true, true, true]
+P(S|D)  = P(Feature0=true|S).P(Feature1=true|S).P(Feature2=true|S).P(Feature3=true|S).P(Feature4=true|S).P(Feature5=true|S).P(Feature6=false|S).P(Feature7=false|S).P(Feature8=false|S).P(Feature9=true|S).P(Feature10=true|S).P(Feature11=true|S).P(S)
+P(S`|D) = P(Feature0=true|S`).P(Feature1=true|S`).P(Feature2=true|S`).P(Feature3=true|S`).P(Feature4=true|S`).P(Feature5=true|S`).P(Feature6=false|S`).P(Feature7=false|S`).P(Feature8=false|S`).P(Feature9=true|S`).P(Feature10=true|S`).P(Feature11=true|S`).P(S`)
+
+P(S|D)  = 34/51 X 30/51 X 23/51 X 31/51 X 25/51 X 18/51 X 11/51 X 12/51 X 34/51 X 34/51 X 34/51 X 40/51 X 51/200
+P(S`|D) = 53/149 X 86/149 X 51/149 X 59/149 X 50/149 X 70/149 X 74/149 X 97/149 X 113/149 X 43/149 X 87/149 X 50/149 X 149/200
+P(S|D)  = 0.0000559333821
+P(S`|D) = 0.00004531325612
+Class   = SPAM
+Since Prob of Spam > Prob of No Spam, then email is classified as SPAM
+
+========================================================================
+Instance [ 6 ]
+[false, false, false, false, true, true, false, true, false, false, false, false]
+P(S|D)  = P(Feature0=false|S).P(Feature1=false|S).P(Feature2=false|S).P(Feature3=false|S).P(Feature4=true|S).P(Feature5=true|S).P(Feature6=false|S).P(Feature7=true|S).P(Feature8=false|S).P(Feature9=false|S).P(Feature10=false|S).P(Feature11=false|S).P(S)
+P(S`|D) = P(Feature0=false|S`).P(Feature1=false|S`).P(Feature2=false|S`).P(Feature3=false|S`).P(Feature4=true|S`).P(Feature5=true|S`).P(Feature6=false|S`).P(Feature7=true|S`).P(Feature8=false|S`).P(Feature9=false|S`).P(Feature10=false|S`).P(Feature11=false|S`).P(S`)
+
+P(S|D)  = 17/51 X 21/51 X 28/51 X 20/51 X 25/51 X 18/51 X 11/51 X 39/51 X 34/51 X 17/51 X 17/51 X 11/51 X 51/200
+P(S`|D) = 96/149 X 63/149 X 98/149 X 90/149 X 50/149 X 70/149 X 74/149 X 52/149 X 113/149 X 106/149 X 62/149 X 99/149 X 149/200
+P(S|D)  = 0.00000343552961
+P(S`|D) = 0.00032863646629
+Class   = NOTSPAM
+Since Prob of Spam < Prob of No Spam, then email is classified as NOTSPAM
+========================================================================
+Instance [ 7 ]
+[false, true, false, true, true, true, true, false, false, false, true, true]
+P(S|D)  = P(Feature0=false|S).P(Feature1=true|S).P(Feature2=false|S).P(Feature3=true|S).P(Feature4=true|S).P(Feature5=true|S).P(Feature6=true|S).P(Feature7=false|S).P(Feature8=false|S).P(Feature9=false|S).P(Feature10=true|S).P(Feature11=true|S).P(S)
+P(S`|D) = P(Feature0=false|S`).P(Feature1=true|S`).P(Feature2=false|S`).P(Feature3=true|S`).P(Feature4=true|S`).P(Feature5=true|S`).P(Feature6=true|S`).P(Feature7=false|S`).P(Feature8=false|S`).P(Feature9=false|S`).P(Feature10=true|S`).P(Feature11=true|S`).P(S`)
+
+P(S|D)  = 17/51 X 30/51 X 28/51 X 31/51 X 25/51 X 18/51 X 40/51 X 12/51 X 34/51 X 17/51 X 34/51 X 40/51 X 51/200
+P(S`|D) = 96/149 X 86/149 X 98/149 X 59/149 X 50/149 X 70/149 X 75/149 X 97/149 X 113/149 X 106/149 X 87/149 X 50/149 X 149/200
+P(S|D)  = 0.00006190255954
+P(S`|D) = 0.00039404281415
+Class   = NOTSPAM
+Since Prob of Spam < Prob of No Spam, then email is classified as NOTSPAM
+========================================================================
+Instance [ 8 ]
+[true, true, true, true, true, false, true, false, false, true, false, true]
+P(S|D)  = P(Feature0=true|S).P(Feature1=true|S).P(Feature2=true|S).P(Feature3=true|S).P(Feature4=true|S).P(Feature5=false|S).P(Feature6=true|S).P(Feature7=false|S).P(Feature8=false|S).P(Feature9=true|S).P(Feature10=false|S).P(Feature11=true|S).P(S)
+P(S`|D) = P(Feature0=true|S`).P(Feature1=true|S`).P(Feature2=true|S`).P(Feature3=true|S`).P(Feature4=true|S`).P(Feature5=false|S`).P(Feature6=true|S`).P(Feature7=false|S`).P(Feature8=false|S`).P(Feature9=true|S`).P(Feature10=false|S`).P(Feature11=true|S`).P(S`)
+
+P(S|D)  = 34/51 X 30/51 X 23/51 X 31/51 X 25/51 X 33/51 X 40/51 X 12/51 X 34/51 X 34/51 X 17/51 X 40/51 X 51/200
+P(S`|D) = 53/149 X 86/149 X 51/149 X 59/149 X 50/149 X 79/149 X 75/149 X 97/149 X 113/149 X 43/149 X 62/149 X 50/149 X 149/200
+P(S|D)  = 0.00018644460943
+P(S`|D) = 0.00003693654435
+Class   = SPAM
+Since Prob of Spam > Prob of No Spam, then email is classified as SPAM
+
+========================================================================
+Instance [ 9 ]
+[true, true, false, false, false, true, false, true, false, false, true, false]
+P(S|D)  = P(Feature0=true|S).P(Feature1=true|S).P(Feature2=false|S).P(Feature3=false|S).P(Feature4=false|S).P(Feature5=true|S).P(Feature6=false|S).P(Feature7=true|S).P(Feature8=false|S).P(Feature9=false|S).P(Feature10=true|S).P(Feature11=false|S).P(S)
+P(S`|D) = P(Feature0=true|S`).P(Feature1=true|S`).P(Feature2=false|S`).P(Feature3=false|S`).P(Feature4=false|S`).P(Feature5=true|S`).P(Feature6=false|S`).P(Feature7=true|S`).P(Feature8=false|S`).P(Feature9=false|S`).P(Feature10=true|S`).P(Feature11=false|S`).P(S`)
+
+P(S|D)  = 34/51 X 30/51 X 28/51 X 20/51 X 26/51 X 18/51 X 11/51 X 39/51 X 34/51 X 17/51 X 34/51 X 11/51 X 51/200
+P(S`|D) = 53/149 X 86/149 X 98/149 X 90/149 X 99/149 X 70/149 X 74/149 X 52/149 X 113/149 X 106/149 X 87/149 X 99/149 X 149/200
+P(S|D)  = 0.00002041686275
+P(S`|D) = 0.00068813073449
+Class   = NOTSPAM
+Since Prob of Spam < Prob of No Spam, then email is classified as NOTSPAM
+========================================================================

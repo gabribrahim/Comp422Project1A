@@ -6,8 +6,12 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 
 
 public class DataSetsLoader {
@@ -18,8 +22,9 @@ public class DataSetsLoader {
 	public HashSet<String> dataSetClasses			= new HashSet<>();
 	public BaseClassifier myclassifier;
 	public String dataSetName;
-	
-	
+	public HashMap<String,Integer> classesCount		= new HashMap<>();
+	public LinkedHashMap<String,HashMap<String,Integer>> countTable	= new LinkedHashMap<>();
+	public LinkedHashMap<String,HashMap<String,String>> probTable	= new LinkedHashMap<>();
 	@Override
 	public String toString() {
 		String strRep								= dataSetName + " [dataSetListSize=" + trainingDataSetList.size() + "]\n";
@@ -54,9 +59,8 @@ public class DataSetsLoader {
 			
 			while (line != null) {
 				String[] lineParts 					= line.split("     ");
-				
-				List<String> lineList 				= Arrays.asList(lineParts);
-//				lineList.remove(" ");
+				List<String> lineList 				= new LinkedList<String>(Arrays.asList(lineParts));				
+				lineList.remove("");
 				String featureLabel;
 				List<String> featuresList;
 				if (dataIslabelled) {
@@ -66,12 +70,12 @@ public class DataSetsLoader {
 					featureLabel 					= "";
 					featuresList 					= lineList.subList(0, lineList.size());
 				}
-				System.out.println(featuresList);
+//				System.out.println(featuresList);
 				LabelledDataInstance dataInstance 	= new LabelledDataInstance(featuresList, featureLabel);
 				dataSetClasses.add(featureLabel);
 				dataInstance.parseInformationToValues(); // Converts Strings to Floats
 				dataSetList.add(dataInstance);
-				System.out.println(dataInstance+"\n"+featuresList.size()+"<>"+dataInstance.featureListAsValues.size());
+//				System.out.println(dataInstance+"\n"+featuresList.size()+"<>"+dataInstance.featureListAsValues.size());
 				
 				line 								= bufferedReader.readLine();
 			}			
@@ -83,6 +87,79 @@ public class DataSetsLoader {
 		return report;
 	}
 
+	public void createCountTable() {
+		classesCount.put("1", 0);
+		classesCount.put("0", 0);
+		countTable.put("Total",new HashMap<String,Integer>());
+		for (int i=0;i<trainingDataSetList.get(0).featureListAsValues.size();i++) {
+			HashMap<String,Integer> labelsMap = new HashMap<String,Integer>();
+			for (String classLabel : dataSetClasses) {
+				labelsMap.put(classLabel, 0);
+			}
+			countTable.put("Feature"+i+"=true",labelsMap);
+			countTable.put("Feature"+i+"=false",(HashMap<String, Integer>) labelsMap.clone());
+		}
+		for (LabelledDataInstance instance:trainingDataSetList) {
+			//COUNT CLASS LABELS
+			int currentCount 						= classesCount.get(instance.labelName);
+			currentCount							+=1;
+			classesCount.put(instance.labelName, currentCount);
+			// Features Count 
+			for (int i=0;i<instance.featureListAsValues.size();i++) {
+				
+				boolean state						= instance.featureListAsValues.get(i);
+				if (state) {
+					int featureCount				= countTable.get("Feature"+i+"=true").get(instance.labelName);
+					featureCount				   +=1;
+					countTable.get("Feature"+i+"=true").put(instance.labelName, featureCount);
+				}else {
+					int featureCount				= countTable.get("Feature"+i+"=false").get(instance.labelName);
+					featureCount				   +=1;
+					countTable.get("Feature"+i+"=false").put(instance.labelName, featureCount);
+					
+				}
+				
+				
+			}
+			
+		}
+		
+		countTable.get("Total").put("1", classesCount.get("1"));
+		countTable.get("Total").put("0", classesCount.get("0"));
+	}
+	
+	public void createProbTable() {
+		// Below is Just String Reps For UI AND Sanity Visual Checks
+		// Filling Up Totals 
+		probTable.put("P(Class)",new HashMap<String,String>());
+		probTable.get("P(Class)").put("1", countTable.get("Total").get("1").toString()+"/"+trainingDataSetList.size());
+		probTable.get("P(Class)").put("0", countTable.get("Total").get("0").toString()+"/"+trainingDataSetList.size());
+		
+		// Creating Empty Maps For All feature=true , feature=false
+		for (int i=0;i<trainingDataSetList.get(0).featureListAsValues.size();i++) {
+			HashMap<String,String> labelsMap = new HashMap<String,String>();
+			for (String classLabel : dataSetClasses) {
+				labelsMap.put(classLabel, "");
+			}
+			probTable.put("Feature"+i+"=true",labelsMap);
+			probTable.put("Feature"+i+"=false",(HashMap<String, String>) labelsMap.clone());
+		}
+		// Building Strings count(feature=true)/count(class), count(feature=false)/count(class)
+		for (Entry<String, HashMap<String, Integer>> entry:countTable.entrySet()) {
+			if (entry.getKey()=="Total") {continue;}
+			for (String classLabel:dataSetClasses) {
+				int featureCount 				= countTable.get(entry.getKey()).get(classLabel);
+				int totalCount					= countTable.get("Total").get(classLabel);				
+				probTable.get(entry.getKey()).put(classLabel, ""+featureCount+"/"+totalCount);
+				
+			}
+			
+		}
+	}
+	
+	
+	
+	
 	
 	public String loadIrisDataSet(String filePath, ArrayList<LabelledDataInstance> dataSetList) {		
 		

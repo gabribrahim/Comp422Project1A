@@ -11,63 +11,35 @@
 
 <AnchorPane fx:id="RootAP" prefHeight="571.0" prefWidth="1024.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="application.MainController">
    <children>
-      <Region id="LoadIrisBTN" layoutX="150.0" layoutY="6.0" prefHeight="64.0" prefWidth="1004.0" AnchorPane.bottomAnchor="470.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="6.0">
-         <effect>
-            <Lighting specularExponent="17.97">
-               <bumpInput>
-                  <DropShadow />
-               </bumpInput>
-               <light>
-                  <Light.Distant color="#4a3e3e" />
-               </light>
-            </Lighting>
-         </effect>
-      </Region>
-      <Label id="MainLabel" fx:id="MainLabel" layoutX="17.0" layoutY="1.0" prefHeight="64.0" prefWidth="1004.0" text="Assignment 3 Question 2" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0">
-         <font>
-            <Font name="Andalus" size="29.0" />
-         </font>
-      </Label>
-      <VBox layoutX="40.0" layoutY="527.0" prefHeight="83.0" prefWidth="958.0" spacing="7.0" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0">
+      <VBox prefHeight="577.0" prefWidth="1024.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="0.0">
          <children>
-            <HBox alignment="CENTER_LEFT" prefHeight="39.0" prefWidth="1024.0">
+            <Label id="MainLabel" fx:id="MainLabel" prefHeight="64.0" prefWidth="1004.0" text="Assignment 3 Question 2">
+               <font>
+                  <Font name="Andalus" size="29.0" />
+               </font>
+            </Label>
+            <HBox id="ChartBox" fx:id="ChartBox" prefHeight="508.0" prefWidth="1024.0" VBox.vgrow="ALWAYS">
                <children>
-                  <Label prefHeight="38.0" text="K-NN :.">
-                     <padding>
-                        <Insets left="10.0" right="10.0" />
-                     </padding>
-                  </Label>
-                  <TextField id="KnnTF" fx:id="KnnTF" text="3" />
-                  <Label text="K-Means:.">
-                     <padding>
-                        <Insets left="10.0" right="10.0" />
-                     </padding>
-                  </Label>
-                  <TextField text="3" />
-                  <Label text="K-Means Iterations:." />
-                  <TextField fx:id="KmeansIterTF" text="1" />
+                  <VBox prefHeight="200.0" prefWidth="275.0">
+                     <children>
+                        <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#loadLabelledData" prefWidth="755.0" text="Load Labelled Data" />
+                        <Button fx:id="ChangeAxisBTN" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#createCountTable" prefWidth="755.0" text="Compute Count Table">
+                           <VBox.margin>
+                              <Insets />
+                           </VBox.margin>
+                        </Button>
+                        <Button id="ComputeKnnBTN" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#createProbTable" prefWidth="755.0" text="Computer Probability Table" />
+                        <Button alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Load Unlabelled Data" />
+                        <Button alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Write Sample Output" />
+                        <TextArea fx:id="StatusTA" maxWidth="-Infinity" prefHeight="200.0" prefWidth="275.0" VBox.vgrow="ALWAYS" />
+                     </children>
+                  </VBox>
                </children>
+               <VBox.margin>
+                  <Insets />
+               </VBox.margin>
             </HBox>
-            <Separator prefWidth="200.0" />
          </children>
       </VBox>
-      <HBox id="ChartBox" fx:id="ChartBox" layoutX="11.0" layoutY="49.0" maxWidth="-Infinity" prefHeight="418.0" prefWidth="30000.0" AnchorPane.bottomAnchor="104.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="49.0">
-         <children>
-            <VBox prefHeight="200.0" prefWidth="275.0">
-               <children>
-                  <Button alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Load Labelled Data" />
-                  <Button fx:id="ChangeAxisBTN" alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Compute Count Table">
-                     <VBox.margin>
-                        <Insets />
-                     </VBox.margin>
-                  </Button>
-                  <Button id="ComputeKnnBTN" alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Computer Probability Table" />
-                  <Button alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Load Unlabelled Data" />
-                  <Button alignment="BASELINE_LEFT" mnemonicParsing="false" prefWidth="755.0" text="Write Sample Output" />
-                  <TextArea fx:id="StatusTA" maxWidth="-Infinity" prefHeight="200.0" prefWidth="275.0" VBox.vgrow="ALWAYS" />
-               </children>
-            </VBox>
-         </children>
-      </HBox>
    </children>
 </AnchorPane>

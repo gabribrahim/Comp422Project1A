@@ -4,7 +4,7 @@ package model;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LabelledDataInstance <LabelledDataInstance>{
+public class LabelledDataInstance {
 	public List<String> featuresListAsStrings;
 	public String labelName;
 	public ArrayList<Boolean> featureListAsValues;	
