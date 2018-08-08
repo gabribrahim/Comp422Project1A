@@ -1,5 +1,9 @@
 package application;
 
+import java.awt.FileDialog;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -20,6 +24,9 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
+import javafx.geometry.Bounds;
+import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.ScatterChart;
@@ -27,24 +34,42 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.Labeled;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import model.DataSetsLoader;
-
+import model.ImageConvolutionMask;
 
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
+import javax.swing.JFileChooser;
 
 import model.LabelledDataInstance;
+
+import org.omg.CORBA.FieldNameHelper;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfByte;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
+
+
+import java.lang.reflect.Field;
+import org.opencv.highgui.HighGui;
 
 public class MainController {
 	//UI ELEMENTS
@@ -52,221 +77,357 @@ public class MainController {
 	@FXML private  TextArea StatusTA;
 	@FXML private  HBox ChartBox;
 	@FXML private  TextField KnnTF;
-	@FXML private AnchorPane RootAP;
-	@FXML private TextField KmeansIterTF;
-    private TableView countTable 			= new TableView();
-    private TableView probabiltyTable 		= new TableView();
-    TableColumn classCol 					= new TableColumn("Class");
-    TableColumn probCol 					= new TableColumn("Probability");
-    TableColumn noSpamCol 					= new TableColumn("0 [Not Spam]");
-    TableColumn noSpamCol2 					= new TableColumn("0 [Not Spam]");
-    TableColumn spamCol 					= new TableColumn("1 [Spam]");
-    TableColumn spamCol2 					= new TableColumn("1 [Spam]");
+	@FXML private AnchorPane RootAP;	
+	@FXML private Group SourceImgGRP;
+	@FXML private ScrollPane ImgScrollPane;
+	@FXML private GridPane ConvMaskGridP; 
+	@FXML private HBox ConvBox;
+
     
 	private Main main;
 	private DataSetsLoader myDataLoader 	= new DataSetsLoader();
-	
+	public int effectIterations				=0;
 	public HashMap<String,XYChart.Series<Number,Number>> chartSeries = new HashMap<>();
 	public ScatterChart<Number,Number> scatterChart ;
-	public List<String> featuresList = new ArrayList<String>();
-	public String xAxisFeature; 
-	public String yAxisFeature ;	
-	
-	public HashMap<String,Integer> axisOptions		= new HashMap<String,Integer>();
-	
+	public List<String> featuresList 		= new ArrayList<String>();
+	public Mat loadedImage;
+	public String path 						= null;
+	public ImageView imgView;
+	public Float currentZoomFactor 			= 1.0f;
+	public HashMap<ArrayList<Integer>,Float> convolutionKernel		= new HashMap<ArrayList<Integer>,Float>();
+	public Mat imageBufA;
+	public Mat imageBufB;
+	public Mat bufferImage;
 	
 	@SuppressWarnings("static-access")
 	public void setMain(Main main) {
-		//G7244
+		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+		
 		this.main		= main;
-
-//		myDataLoader.loadEmailData(System.getProperty("user.dir").replace('\\', '/') + "/spamUnlabelled.dat",myDataLoader.trainingDataSetList, false);
-		setupTables();
-		loadLabelledData();
-		createCountTable();
-		createProbTable();
-		loadUnLabelledData();
-		writeOutputFile();
 		
+//		loadEdgeDetectionImage();
+//		test();
+//		applyConvolutionOperator();
+//		System.exit(0);
 	}
-	public void writeOutputFile() {
-		ArrayList<String> linesToWrite	= new ArrayList<>();
-		for (LabelledDataInstance instance : myDataLoader.testDataSetList) {
-//			System.out.println(instance.featureListAsValues+">>"+instance.featureListAsValues.size());
-			String formula				= "Instance [ "+myDataLoader.testDataSetList.indexOf(instance)+" ]\n"+
-						instance.featureListAsValues+"\nP(S|D)  = ";
-			formula 					= assembleFormulaSymbolic(instance, formula);
-			formula 					+="\n\n";
-			formula 					= assembleFormulaNumerical(instance, formula);
-			try {
-				formula						= evaluateFormulaNumerical(instance, formula);
-			} catch (ScriptException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+	
+	@SuppressWarnings("unchecked")
+	public void getConvolutionKernelFromUI() {
+		convolutionKernel.clear();
+		ScriptEngineManager manager = new ScriptEngineManager();
+		ScriptEngine engine 		= manager.getEngineByName("js");
 			
-			formula +="\n========================================================================";
-			linesToWrite.add(formula);
-			System.out.println(formula);
-		}
-		Path file = Paths.get("output.txt");
-		try {
-			Files.write(file, linesToWrite, Charset.forName("UTF-8"));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}			
-	}
-	private String assembleFormulaSymbolic(LabelledDataInstance instance, String formula) {
-		for (int i =0 ; i<instance.featureListAsValues.size();i++) {
-			boolean featureState	= instance.featureListAsValues.get(i);
-			if (featureState) {
-				formula				+= "P(Feature"+i+"=true|S).";
-			}else {
-				formula				+= "P(Feature"+i+"=false|S).";
+		for ( Node valueUI :ConvMaskGridP.getChildren()) {			
+			if (valueUI.idProperty().getValue() != null) {
+//				System.out.print(valueUI.idProperty().getValue()+" ");
+				String id 			= valueUI.idProperty().getValue();
+				ArrayList<Integer> pixelpos = new ArrayList<Integer>();
+				try {
+					Object result 	= engine.eval(((TextField) valueUI).getText());
+					switch (id) {
+					case "Conv00TF":
+						pixelpos.add(-1);
+						pixelpos.add(-1);
+						convolutionKernel.put((ArrayList<Integer>) pixelpos.clone(), Float.parseFloat(result.toString()));
+						pixelpos.clear();
+					case "Conv01TF":
+						pixelpos.add(-1);
+						pixelpos.add(-0);
+						convolutionKernel.put((ArrayList<Integer>) pixelpos.clone(), Float.parseFloat(result.toString()));
+						pixelpos.clear();
+					case "Conv02TF":
+						pixelpos.add(-1);
+						pixelpos.add(1);
+						convolutionKernel.put((ArrayList<Integer>) pixelpos.clone(), Float.parseFloat(result.toString()));
+						pixelpos.clear();	
+					case "Conv10TF":
+						pixelpos.add(0);
+						pixelpos.add(-1);
+						convolutionKernel.put((ArrayList<Integer>) pixelpos.clone(), Float.parseFloat(result.toString()));
+						pixelpos.clear();
+					case "Conv11TF":
+						pixelpos.add(0);
+						pixelpos.add(0);
+						convolutionKernel.put((ArrayList<Integer>) pixelpos.clone(), Float.parseFloat(result.toString()));
+						pixelpos.clear();	
+					case "Conv12TF":
+						pixelpos.add(0);
+						pixelpos.add(1);
+						convolutionKernel.put((ArrayList<Integer>) pixelpos.clone(), Float.parseFloat(result.toString()));
+						pixelpos.clear();
+					case "Conv20TF":
+						pixelpos.add(1);
+						pixelpos.add(-1);
+						convolutionKernel.put((ArrayList<Integer>) pixelpos.clone(), Float.parseFloat(result.toString()));
+						pixelpos.clear();
+					case "Conv21TF":
+						pixelpos.add(1);
+						pixelpos.add(0);
+						convolutionKernel.put((ArrayList<Integer>) pixelpos.clone(), Float.parseFloat(result.toString()));
+						pixelpos.clear();							
+					case "Conv22TF":
+						pixelpos.add(1);
+						pixelpos.add(1);
+						convolutionKernel.put((ArrayList<Integer>) pixelpos.clone(), Float.parseFloat(result.toString()));
+						pixelpos.clear();							
+					}
+//					System.out.println(Float.parseFloat(result.toString()));
+				} catch (ScriptException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}	
 			}
 		}
-		formula						+= "P(S)\nP(S`|D) = ";
-		for (int i =0 ; i<instance.featureListAsValues.size();i++) {
-			boolean featureState	= instance.featureListAsValues.get(i);
-			if (featureState) {
-				formula				+= "P(Feature"+i+"=true|S`).";
-			}else {
-				formula				+= "P(Feature"+i+"=false|S`).";
-			}
-		}	
-		formula						+= "P(S`)";
-		return formula;
+//		convolutionKernel.put(key, value);
 	}
 	
-	private String assembleFormulaNumerical(LabelledDataInstance instance, String formula) {
-		formula						+= "P(S|D)  = ";
-		for (int i =0 ; i<instance.featureListAsValues.size();i++) {
-			boolean featureState	= instance.featureListAsValues.get(i);
-			if (featureState) {
-				formula				+= myDataLoader.probTable.get("Feature"+i+"=true").get("1")+" X ";
-			}else {
-				formula				+= myDataLoader.probTable.get("Feature"+i+"=false").get("1")+" X ";
-			}
-		}
-		formula						+= myDataLoader.probTable.get("P(Class)").get("1")+"\nP(S`|D) = ";
-		for (int i =0 ; i<instance.featureListAsValues.size();i++) {
-			boolean featureState	= instance.featureListAsValues.get(i);
-			if (featureState) {
-				formula				+= myDataLoader.probTable.get("Feature"+i+"=true").get("0")+" X ";
-			}else {
-				formula				+= myDataLoader.probTable.get("Feature"+i+"=false").get("0")+" X ";
-			}
-		}	
-		formula						+=  myDataLoader.probTable.get("P(Class)").get("0");
-		return formula;
-	}	
-	
-	private String evaluateFormulaNumerical(LabelledDataInstance instance, String formula) throws ScriptException {		
-		Float spamProb				=(float) 1;
-		Float noSpamProb			=(float) 1;	
-	    ScriptEngineManager mgr 	= new ScriptEngineManager();
-	    ScriptEngine engine 		= mgr.getEngineByName("JavaScript");		
-		for (int i =0 ; i<instance.featureListAsValues.size();i++) {
-			boolean featureState	= instance.featureListAsValues.get(i);
-			if (featureState) {
-				String toEval		= myDataLoader.probTable.get("Feature"+i+"=true").get("1");
-				String evaluatedFloat= engine.eval(toEval).toString();
-				spamProb			*= Float.parseFloat(evaluatedFloat);
-						
-				 
-			}else {
-				String toEval		= myDataLoader.probTable.get("Feature"+i+"=false").get("1");
-				String evaluatedFloat= engine.eval(toEval).toString();
-				spamProb			*= Float.parseFloat(evaluatedFloat);			}
-		}
-		String toEvalClassProb		= myDataLoader.probTable.get("P(Class)").get("1");
-		String evaluatedClassProb	= engine.eval(toEvalClassProb).toString();
-		spamProb					*= Float.parseFloat(evaluatedClassProb);		
-//		formula						+= myDataLoader.probTable.get("P(Class)").get("1")+"\nP(S`|D) = ";
+	public void loadImageFromDisk() {
+        JFileChooser chooser = new JFileChooser();
+        int returnName = chooser.showOpenDialog(null);
+        
+        if (returnName == JFileChooser.APPROVE_OPTION) {
+            File f = chooser.getSelectedFile();
+            if (f != null) {
+                path = f.getAbsolutePath();
+            }
+        }else {
+        	return;
+        }
+		effectIterations				=0;
+		loadedImage						= Imgcodecs.imread(path);
+		showLoadedImageInUi(loadedImage);
+		System.out.println(path);
+		System.out.println(loadedImage);
+		updateStatusText("Loaded Image From Disk !!!");
+        
+	}
+	public void zoomIn() {
+		currentZoomFactor			= (float) imgView.getScaleX();
+		currentZoomFactor		   += 0.1f;
+		imgView.setScaleX(currentZoomFactor);
+		imgView.setScaleY(currentZoomFactor);		
+	}
+	public void zoomOut() {
+		currentZoomFactor			= (float) imgView.getScaleX();
+		currentZoomFactor		   -= 0.1f;
+		imgView.setScaleX(currentZoomFactor);
+		imgView.setScaleY(currentZoomFactor);	
 		
-		for (int i =0 ; i<instance.featureListAsValues.size();i++) {
-			boolean featureState	= instance.featureListAsValues.get(i);
-			if (featureState) {
-				String toEval		= myDataLoader.probTable.get("Feature"+i+"=true").get("0");
-				String evaluatedFloat= engine.eval(toEval).toString();
-				noSpamProb			*= Float.parseFloat(evaluatedFloat);
-			}else {
-				String toEval		= myDataLoader.probTable.get("Feature"+i+"=false").get("0");
-				String evaluatedFloat= engine.eval(toEval).toString();
-				noSpamProb			*= Float.parseFloat(evaluatedFloat);			
+	}
+	
+	public void sobelX() {
+		for ( Node valueUI :ConvMaskGridP.getChildren()) {			
+			if (valueUI.idProperty().getValue() != null) {
+//				System.out.print(valueUI.idProperty().getValue()+" ");
+				String id 			= valueUI.idProperty().getValue();				
+				ArrayList<Integer> pixelpos = new ArrayList<Integer>();
+				TextField tf		= (TextField)valueUI;
+//				System.out.println(id);
+				if (id.equals("Conv00TF")) {
+					tf.setText("-1");
 				}
+				if (id.equals("Conv01TF")) {
+					tf.setText("0");
+				}	
+				if (id.equals("Conv02TF")) {
+					tf.setText("1");
+				}	
+				if (id.equals("Conv10TF")) {
+					tf.setText("-2");
+				}	
+				if (id.equals("Conv11TF")) {
+					tf.setText("0");
+				}
+				if (id.equals("Conv12TF")) {
+					tf.setText("2");
+				}				
+				if (id.equals("Conv20TF")) {
+					tf.setText("-1");
+				}
+				if (id.equals("Conv21TF")) {
+					tf.setText("0");
+				}				
+				if (id.equals("Conv22TF")) {
+					tf.setText("1");
+				}				
+				
+			}
 		}	
-//		formula						+=  myDataLoader.probTable.get("P(Class)").get("0");
-		toEvalClassProb				= myDataLoader.probTable.get("P(Class)").get("0");
-		evaluatedClassProb			= engine.eval(toEvalClassProb).toString();
-		noSpamProb					*= Float.parseFloat(evaluatedClassProb);		
-		NumberFormat floatFormatter	= NumberFormat.getInstance();
-		floatFormatter.setMaximumFractionDigits(14);
-		floatFormatter.setGroupingUsed(false);
-		formula						+= "\nP(S|D)  = " + floatFormatter.format(spamProb)+"\nP(S`|D) = "+floatFormatter.format(noSpamProb);
-		if(spamProb>noSpamProb) {
-			formula					+= "\nClass   = SPAM\nSince Prob of Spam > Prob of No Spam, then email is classified as SPAM\n";
-		}else {
-			formula					+= "\nClass   = NOTSPAM\nSince Prob of Spam < Prob of No Spam, then email is classified as NOTSPAM";
+		applyConvolutionOperator();
+		imageBufA 					= bufferImage.clone();
+	}	
+	
+	
+	public void sobelY() {
+		for ( Node valueUI :ConvMaskGridP.getChildren()) {			
+			if (valueUI.idProperty().getValue() != null) {
+//				System.out.print(valueUI.idProperty().getValue()+" ");
+				String id 			= valueUI.idProperty().getValue();				
+				ArrayList<Integer> pixelpos = new ArrayList<Integer>();
+				TextField tf		= (TextField)valueUI;
+//				System.out.println(id);
+				if (id.equals("Conv00TF")) {
+					tf.setText("-1");
+				}
+				if (id.equals("Conv01TF")) {
+					tf.setText("-2");
+				}	
+				if (id.equals("Conv02TF")) {
+					tf.setText("-1");
+				}	
+				if (id.equals("Conv10TF")) {
+					tf.setText("0");
+				}	
+				if (id.equals("Conv11TF")) {
+					tf.setText("0");
+				}
+				if (id.equals("Conv12TF")) {
+					tf.setText("0");
+				}				
+				if (id.equals("Conv20TF")) {
+					tf.setText("1");
+				}
+				if (id.equals("Conv21TF")) {
+					tf.setText("2");
+				}				
+				if (id.equals("Conv22TF")) {
+					tf.setText("1");
+				}				
+				
+			}
 		}
-		return formula;
-	}	
-	
-	
-	public void loadUnLabelledData() {
-		myDataLoader.loadEmailData(System.getProperty("user.dir").replace('\\', '/') + "/spamUnlabelled.dat",myDataLoader.testDataSetList, false);
-		updateStatusText("Loaded Unlabeled Data Set\n"+ myDataLoader.testDataSetList.size()+" Instances");
-	}	
-	public void loadLabelledData() {
-		myDataLoader.loadEmailData(System.getProperty("user.dir").replace('\\', '/') + "/spamLabelled.dat",myDataLoader.trainingDataSetList, true);
-		updateStatusText("Loaded Labeled Data Set\n"+ myDataLoader.trainingDataSetList.size()+" Instances");
+		applyConvolutionOperator();
+		imageBufB							= bufferImage.clone();
 	}
-	public void createProbTable() {
-		probabiltyTable.getItems().clear();
-		myDataLoader.createProbTable();
-		for (Entry<String, HashMap<String, String>> entry:myDataLoader.probTable.entrySet()) {			
-			TableModelRepUI uiEntry		= new TableModelRepUI(entry.getKey(),entry.getValue().get("1"),entry.getValue().get("0"),"");
-			probabiltyTable.getItems().add(uiEntry);
+	
+	public void sobelOperator() {
+		sobelX();
+//		saveSnapShot();
+		sobelY();
+//		saveSnapShot();
+		for (int col=0; col<loadedImage.size().width;col++) {
+			for (int row=0; row<loadedImage.size().height;row++) {
+				
+				double gX					= imageBufA.get(row, col)[0];
+				double gY					= imageBufB.get(row, col)[0];
+				double newPixel				= Math.sqrt((Math.pow(gX, 2)+Math.pow(gY, 2)));
+//				if (newPixel<100) {
+//					newPixel				= 0;
+//				}
+				double[] p					= {newPixel,newPixel,newPixel};
+				bufferImage.put(row, col, p);
+				
+			}
+			
+		}		
+		showLoadedImageInUi(bufferImage);
+		
+	}
+	public void writeImage() {
+		File f 								= new File(path);
+		String fileName						= f.getName();
+		File file = new File("edited_"+fileName);
+		System.out.println(file.getAbsolutePath());
+//		System.out.println(path.replaceFirst(fileName, ));
+		Imgcodecs.imwrite(file.getAbsolutePath(), bufferImage);
+	}
+	public void reloadImageFromDisk() {
+		effectIterations				=0;
+//		path							="C:\\Users\\ibrahim\\Desktop\\faceDetection\\testImages\\test1.jpg";
+		loadedImage						= Imgcodecs.imread(path);
+		showLoadedImageInUi(loadedImage);
+		System.out.println(SourceImgGRP.getChildren());
+		System.out.println(loadedImage);
+		updateStatusText("Reloaded Image From Disk !!!");
+		
+	}
+	public void test() {
+		String directory				="C:\\Users\\ibrahim\\Pictures\\Brian";
+		File aDirectory 				= new File(directory);
+		String[] filesInDir 			= aDirectory.list();
+		for (String dir :filesInDir) {
+			path						= directory +"\\"+dir;
+			System.out.println(directory +"\\"+dir);
+			loadedImage						= Imgcodecs.imread(path);
+			showLoadedImageInUi(loadedImage);
+			sobelY();
+			writeImage();
+			
+		}
+//		path							="C:\\Users\\ibrahim\\Desktop\\faceDetection\\Valve_original_(1).PNG";
+//		loadedImage						= Imgcodecs.imread(path);
+//		showLoadedImageInUi();
+//		writeImage();
+	}
+	public void test2() {
+		int x = 1;
+		int y = 1;
+		System.out.println("INTENSITY = "+loadedImage.get(y, x)[0]+","+loadedImage.get(y, x)[1]+","+loadedImage.get(y, x)[2]);
+		
+		ImageConvolutionMask mask 		= new ImageConvolutionMask(loadedImage, loadedImage.size().width, loadedImage.size().height, 3);
+		mask.calculateRelPixelPositionsInMask();
+		getConvolutionKernelFromUI();
+		mask.loadedImage				= loadedImage;
+		mask.convolutionKernel			= convolutionKernel;
+		mask.pixelX = x;
+		mask.pixelY = y;
+		mask.calculateAbsPixelPositionsInMask();
+		System.out.println(mask.pixelsUnderMask);
+		double new_pixel					= mask.calculateNewPixelValue();
+		System.out.println(mask.pixelsUnderMask);
+		System.out.println(new_pixel);
+		
+	}
+	public void showLoadedImageInUi(Mat imageToShow) {
+		
+		MatOfByte byteMat 				= new MatOfByte();
+		Imgcodecs.imencode(".bmp", imageToShow	, byteMat);
+		Image javafx_image				= new Image(new ByteArrayInputStream(byteMat.toArray()));
+		imgView 						= new ImageView(javafx_image);
+		imgView.setScaleX(currentZoomFactor);
+		imgView.setScaleY(currentZoomFactor);
+		SourceImgGRP.getChildren().clear();
+		SourceImgGRP.getChildren().add(imgView);
+		
+	}
+	public void loadEdgeDetectionImage() {	
+		effectIterations				=0;
+		loadedImage						= Imgcodecs.imread(System.getProperty("user.dir").replace('\\', '/') + "/test-pattern.tif");
+		showLoadedImageInUi(loadedImage);
+		System.out.println(SourceImgGRP.getChildren());
+		System.out.println(loadedImage);
+		updateStatusText("Loaded test-pattern.tif !!!");
+	}
+	
+	public void applyConvolutionOperator() {
+		effectIterations				+=1;
+		ImageConvolutionMask mask 		= new ImageConvolutionMask(loadedImage, loadedImage.size().width, loadedImage.size().height, 3);
+		mask.calculateRelPixelPositionsInMask();
+		getConvolutionKernelFromUI();
+		mask.loadedImage				= loadedImage;
+		mask.convolutionKernel			= convolutionKernel;
+		bufferImage						= loadedImage.clone();
+		System.out.println(loadedImage.size().width);
+		double newPixel;
+		for (int col=0; col<loadedImage.size().width;col++) {
+			for (int row=0; row<loadedImage.size().height;row++) {
+				
+//				System.out.println(loadedImage.get(row, col)[2]);
+				mask.pixelX =col;
+				mask.pixelY = row;
+				mask.calculateAbsPixelPositionsInMask();
+//				System.out.println(mask.pixelsUnderMask);
+				newPixel				= mask.calculateNewPixelValue();
+				double[] p					= {newPixel,newPixel,newPixel};
+				bufferImage.put(row, col, p);
+				
+			}
 			
 		}
 		
-	}
-	public void createCountTable() {
-		myDataLoader.createCountTable();
-		countTable.getItems().clear();
-		System.out.println(myDataLoader.classesCount);
-		updateStatusText("DataSet Count = "+ myDataLoader.trainingDataSetList.size()+
-				"\nClasses Count = "+myDataLoader.classesCount);			
-//		TableModelRepUI totalsEntry		= new TableModelRepUI("Total", myDataLoader.countTable.get("Total").get("1").toString(), 
-//				myDataLoader.countTable.get("Total").get("0").toString(), "");
-//		countTable.getItems().add(totalsEntry);	
-		for (Entry<String, HashMap<String, Integer>> entry:myDataLoader.countTable.entrySet()) {
-			TableModelRepUI uiEntry		= new TableModelRepUI(entry.getKey(),entry.getValue().get("1").toString(),
-					entry.getValue().get("0").toString(),"");
-			countTable.getItems().add(uiEntry);
-			
-		}
-	}
-	public void setupTables() {
-        countTable.setEditable(true);
-        probabiltyTable.setEditable(true);
+		showLoadedImageInUi(bufferImage);
 
-        ChartBox.setHgrow(countTable, Priority.ALWAYS);
-        ChartBox.setHgrow(probabiltyTable, Priority.ALWAYS);
-        countTable.getColumns().addAll(classCol, noSpamCol, spamCol);
-        probabiltyTable.getColumns().addAll(probCol, noSpamCol2, spamCol2);
-		ChartBox.getChildren().add(countTable);
-		ChartBox.getChildren().add(probabiltyTable);
-//		TableModelRepUI test = new TableModelRepUI("TESTAAaaaaaaaaaaaaaa", "aa", "aaa", "vvvv");
-//		probabiltyTable.getItems().add(test);
-		spamCol.setCellValueFactory(new PropertyValueFactory<TableModelRepUI,String>("spam"));
-		classCol.setCellValueFactory(new PropertyValueFactory<TableModelRepUI,String>("className"));
-		noSpamCol.setCellValueFactory(new PropertyValueFactory<TableModelRepUI,String>("NoSPam"));
-		
-		spamCol2.setCellValueFactory(new PropertyValueFactory<TableModelRepUI,String>("spam"));
-		probCol.setCellValueFactory(new PropertyValueFactory<TableModelRepUI,String>("className"));
-		noSpamCol2.setCellValueFactory(new PropertyValueFactory<TableModelRepUI,String>("NoSPam"));
+		updateStatusText("Applied Convolution Kernel "+effectIterations+ " Times");
 		
 	}
 	public void updateStatusText(String message) {
@@ -287,23 +448,29 @@ public class MainController {
 		return selected;
 	}
 	public void saveAsPng(String fileName) {
-		SnapshotParameters snapshotParams   	= new SnapshotParameters();
-		snapshotParams.setFill(Color.rgb(40, 40, 40, 1));
-
+		double scale							= 5;
+		Bounds bounds 							= ConvBox.getLayoutBounds();
+		WritableImage image 					= new WritableImage(
+	            (int) Math.round(bounds.getWidth() * scale),
+	            (int) Math.round(bounds.getHeight() * scale));
 		
-	    WritableImage image 					= scatterChart.snapshot(snapshotParams,null);
+		SnapshotParameters snapshotParams   	= new SnapshotParameters();
+		snapshotParams.setFill(javafx.scene.paint.Color.rgb(40, 40, 40, 1));
+		snapshotParams.setTransform(javafx.scene.transform.Transform.scale(scale, scale));
+		
+//	    WritableImage image2 					= TreeP.snapshot(snapshotParams,null);
     	
-	    
+	    ImageView view 							= new ImageView(ConvBox.snapshot(snapshotParams, image));
 	    File file = new File(fileName+".png");
-
+	    
 	    try {
-	        ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", file);
+	        ImageIO.write(SwingFXUtils.fromFXImage(view.getImage(), null), "png", file);
 	    } catch (IOException e) {
 	        
 	    }
 	}	
 	public void saveSnapShot() {
-		saveAsPng("Result_" + myDataLoader.myclassifier.knnNumber + "NN_" + xAxisFeature+"_"+yAxisFeature);
+		saveAsPng("Result_" + System.currentTimeMillis() );
 	}
 }
 
