@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.NumberFormat;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -39,6 +41,7 @@ import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.ScatterChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
+import javafx.scene.control.Alert;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.ComboBox;
@@ -99,34 +102,37 @@ public class MainController {
 	@FXML private HBox ConvBox;
 	@FXML private CheckBox ToBufferImage;
 	@FXML private ComboBox<String> FeaturesDB;
+    @FXML private CheckBox ShowFeatureRoiCB;
+    @FXML private CheckBox ApplyFaceFeatureCB;
     
 	private Main main;
-	private DataSetsLoader myDataLoader 	= new DataSetsLoader();
-	public int effectIterations				=0;
-	public HashMap<String,XYChart.Series<Number,Number>> chartSeries = new HashMap<>();
-	public ScatterChart<Number,Number> scatterChart ;
-	public List<String> featuresList 		= new ArrayList<String>();
+	private DataSetsLoader myDataLoader 							= new DataSetsLoader();
+	public int effectIterations										= 0;
+	public List<String> featuresList 								= new ArrayList<String>();
 	public Mat loadedImage;
-	public String path 						= null;
+	public String path 												= null;
 	public ImageView imgView;
-	public Float currentZoomFactor 			= 1.0f;
+	public Float currentZoomFactor 									= 1.0f;
 	public HashMap<ArrayList<Integer>,Float> convolutionKernel		= new HashMap<ArrayList<Integer>,Float>();
 	public Mat imageBufA;
 	public Mat imageBufB;
 	public Mat bufferImage;
-	Map<String, Runnable> features = new HashMap<>();
+	public Alert alert = new Alert(Alert.AlertType.INFORMATION);
+	Map<String, Runnable> features 									= new HashMap<>();
+	LinkedHashMap<String,String> imageFeaturesVector				= new LinkedHashMap<>();
+	ArrayList<HashMap<String,String>> trainingFaceSet				= new ArrayList<>();
+	ArrayList<HashMap<String,String>> trainingNoneFaceSet			= new ArrayList<>();
+	ArrayList<HashMap<String,String>> testFaceSet					= new ArrayList<>();
+	ArrayList<HashMap<String,String>> testNoneFaceSet				= new ArrayList<>();
+	HashMap<String,ArrayList<Integer>> featuresRoIs					= new HashMap<>();
+	
 	@SuppressWarnings("static-access")
 	public void setMain(Main main) {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 //		FeaturesDP.getChildrenUnmodifiable().add();
 		this.main		= main;
-
-		FeaturesDB.getItems().addAll("featureA","featureB","featureC","symmetryX");
-		FeaturesDB.setValue("featureA");
-		features.put("featureA", () -> featureA());	
-		features.put("featureB", () -> featureB());	
-		features.put("featureC", () -> featureC());	
 		
+		aSetupForFeatures();
 //		loadEdgeDetectionImage();
 //		test();
 //		applyConvolutionOperator();
@@ -134,6 +140,43 @@ public class MainController {
 		loadRandomFaceImage();
 //		features.get("FeatureA").run();
 //		System.exit(0);
+//		createVectorFeatures();
+	}
+
+	private void aSetupForFeatures() {
+		//All Features UI ADD Setup
+		FeaturesDB.getItems().addAll("noseBridge","forehead","eyeLeft","eyeRight","cheekBonesLeft","cheekBonesRight","symmetryX","mouth");
+		FeaturesDB.setValue("noseBridge");
+		
+		//Forehead
+		
+		features.put("forehead", () -> foreheadPrepProcess());	
+		featuresRoIs.put("forehead", new ArrayList<Integer>() {{add(0);add(0);add(18);add(2);}});
+		
+		// Mouth
+		features.put("mouth", () -> mouthBridge());	
+		featuresRoIs.put("mouth", new ArrayList<Integer>() {{add(1);add(12);add(16);add(5);}});
+		
+		// SymmetryX
+		features.put("symmetryX", () -> checkSymmetryXScore());	
+		featuresRoIs.put("symmetryX", new ArrayList<Integer>() {{add(0);add(0);add(9);add(18);}});
+		
+		//Nose Bridge Feature Setup ROI = {x,y,width,height}
+		features.put("noseBridge", () -> noseBridge());	
+		featuresRoIs.put("noseBridge", new ArrayList<Integer>() {{add(7);add(0);add(4);add(9);}});
+		
+		//Eyes Feature Setup ROI = {x,y,width,height}
+		
+		features.put("eyeRight", () -> eyesPreprocess());	
+		features.put("eyeLeft", () -> eyesPreprocess());
+		featuresRoIs.put("eyeRight", new ArrayList<Integer>() {{add(11);add(1);add(7);add(5);}});
+		featuresRoIs.put("eyeLeft", new ArrayList<Integer>() {{add(0);add(1);add(7);add(5);}});
+		
+		//Cheek Bones Feature Setup ROI = {x,y,width,height}		
+		features.put("cheekBonesLeft", () -> cheekBonesPrepProcess());
+		features.put("cheekBonesRight", () -> cheekBonesPrepProcess());	
+		featuresRoIs.put("cheekBonesLeft", new ArrayList<Integer>() {{add(0);add(0);add(6);add(10);}});
+		featuresRoIs.put("cheekBonesRight", new ArrayList<Integer>() {{add(12);add(0);add(6);add(10);}});
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -279,13 +322,267 @@ public class MainController {
 		showLoadedImageInUi(bufferImage);		
 	}
 	
+	public void showMessage(String message) {
+		alert.setHeaderText(message);
+		alert.show();
+		
+	}
+	public void createVectorFeatures() {
+		Instant start = Instant.now();
+		
+//		// Train Faces
+		String directory				=System.getProperty("user.dir").replace('\\', '/') + "/mit-cbcl-faces-balanced/train/face";
+		File aDirectory 				= new File(directory);
+		String[] filesInDir 			= aDirectory.list();
+		vectorizeImagesInDirectory(directory, filesInDir,"trainingFace");
+		
+		// Train None Faces
+		directory						= System.getProperty("user.dir").replace('\\', '/') + "/mit-cbcl-faces-balanced/train/non-face";
+		aDirectory 						= new File(directory);
+		filesInDir 						= aDirectory.list();
+		vectorizeImagesInDirectory(directory, filesInDir,"trainNoneFace");
 
+		// Test Faces
+		directory						= System.getProperty("user.dir").replace('\\', '/') + "/mit-cbcl-faces-balanced/test/face";
+		aDirectory 						= new File(directory);
+		filesInDir 						= aDirectory.list();
+		vectorizeImagesInDirectory(directory, filesInDir,"testFace");
+
+		// Test None Faces
+		directory						= System.getProperty("user.dir").replace('\\', '/') + "/mit-cbcl-faces-balanced/test/non-face";
+		aDirectory 						= new File(directory);
+		filesInDir 						= aDirectory.list();
+		vectorizeImagesInDirectory(directory, filesInDir,"testNoneFace");
+
+		writeCsvFiles();
+		Instant finish = Instant.now();
+		long timeElapsed = Duration.between(start, finish).toMillis()/1000;
+		System.out.println("TimeForVectorizeImage = "+timeElapsed);
+	}
 	
-	public void checkSymmetryX() {
+	public void writeCsvFiles() {
+		ArrayList<String>columnLabels 				= new ArrayList<>();
+		for (String label:imageFeaturesVector.keySet())columnLabels.add(label);
+		
+		HashMap<String,ArrayList<HashMap<String,String>>> entriesToWrite = new HashMap<>();
+		entriesToWrite.put("trainingFace", trainingFaceSet);
+		entriesToWrite.put("testFace", testFaceSet);
+		entriesToWrite.put("testNoneFace", testNoneFaceSet);
+		entriesToWrite.put("trainNoneFace", trainingNoneFaceSet);
+		
+		
+		for ( String entryToWrite:entriesToWrite.keySet()) {
+			ArrayList<String> linesToWrite 		= new ArrayList<>();
+			String columnLabelsLine 			= String.join(",", columnLabels);
+			linesToWrite.add(columnLabelsLine);
+			ArrayList<HashMap<String,String>> imageEntries = entriesToWrite.get(entryToWrite);			
+			for(HashMap<String,String> imageFeaturesVector:imageEntries) {
+//				System.out.println(imageFeaturesVector.values());
+				ArrayList<String> values		= new ArrayList<>();
+				for (String feature:columnLabels) {
+					values.add(imageFeaturesVector.get(feature));
+				}
+				String featuresLine 			= String.join(",", values);
+				linesToWrite.add(featuresLine);
+			}
+			Path file = Paths.get(entryToWrite+".csv");
+			try {
+				Files.write(file, linesToWrite, Charset.forName("UTF-8"));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				showMessage("Failed To Write New File :-(\nReasons Could be:.\n"+
+				"1.File is Opened By Another Software\n"+
+				"2.User Does not Have Permissions To Write to Folder\n"+
+				"Please kindly check the above issues & Try Again.");
+				e.printStackTrace();
+				alert.showAndWait();
+			}	
+			
+		}
+		trainingFaceSet.clear();
+		trainingNoneFaceSet.clear();
+		testFaceSet.clear();
+		testNoneFaceSet.clear();
+		
+	}
+
+	public void vectorizeImagesInDirectory(String directory, String[] filesInDir,String dataSet) {
+//		trainingFaceSet.clear();
+//		trainingNoneFaceSet.clear();
+//		testFaceSet.clear();
+//		testNoneFaceSet.clear();
+		for (int index=0;index<filesInDir.length;index++) {
+			path							= directory +"/"+filesInDir[index];
+//			System.out.println(path);
+			loadedImage						= Imgcodecs.imread(path);		
+			createVectorFeature();
+			alert.hide();	
+			if (dataSet=="trainingFace") {
+				imageFeaturesVector.put("label","1");
+				trainingFaceSet.add((HashMap<String, String>) imageFeaturesVector.clone());
+			}
+			if (dataSet=="testFace") {
+				imageFeaturesVector.put("label","1");
+				testFaceSet.add((HashMap<String, String>) imageFeaturesVector.clone());
+			}
+			if (dataSet=="testNoneFace") {
+				imageFeaturesVector.put("label","0");
+				testNoneFaceSet.add((HashMap<String, String>) imageFeaturesVector.clone());
+			}
+			if (dataSet=="trainNoneFace") {
+				imageFeaturesVector.put("label","0");
+				trainingNoneFaceSet.add((HashMap<String, String>) imageFeaturesVector.clone());
+			}
+//			System.out.println(imageFeaturesVector);
+			showMessage(dataSet + " DataSet\nVectorized Image "+ index +"/"+filesInDir.length);
+//			if (index==10)break;
+		}
+	}
+	
+	public void computeStatsForRect(String roiName, String featureLabel) {
+		Double average					= averageScoreForROI(roiName);
+		Double std						= stdScoreForROI(roiName,average);
+		Double momentum					= momentumScoreForROI(roiName);
+		imageFeaturesVector.put(featureLabel+"Average", average.toString());
+		imageFeaturesVector.put(featureLabel+"Std", std.toString());
+		imageFeaturesVector.put(featureLabel+"Momentum", momentum.toString());
+		
+	}
+	public void createVectorFeature() {
+		imageFeaturesVector.clear();
+		File imagePath					= new File(path);
+		imageFeaturesVector.put("filePath",imagePath.getAbsolutePath());
+		
+		reloadImageFromDisk();
+		Double symmetryX				= checkSymmetryXScore();
+		imageFeaturesVector.put("symmetryX", symmetryX.toString());
+		ToBufferImage.setSelected(true);
+		
+		// Features with Raw Image//
+		computeStatsForRect("noseBridge", "noseUnfiltered");
+		computeStatsForRect("cheekBonesLeft", "cheekBonesLeftUnfiltered");
+		computeStatsForRect("cheekBonesRight", "cheekBonesRightUnfiltered");
+		computeStatsForRect("eyeLeft", "eyeLeftUnfiltered");
+		computeStatsForRect("eyeRight", "eyeRightUnfiltered");
+		computeStatsForRect("mouth", "mouthUnfiltered");
+		computeStatsForRect("forehead", "foreheadUnfiltered");
+		
+		// Features With Pre-processed Masks//
+		//Nose Bridge//
+		features.get("noseBridge").run();
+		computeStatsForRect("noseBridge", "nose");
+
+		//CheekBones//
+		reloadImageFromDisk();
+		features.get("cheekBonesLeft").run();
+		computeStatsForRect("cheekBonesLeft", "cheekBonesLeft");
+		computeStatsForRect("cheekBonesRight", "cheekBonesRight");
+		
+		//Eyes//
+		reloadImageFromDisk();
+		features.get("eyeLeft").run();
+		ArrayList<Double> eyeAverages	= eyesAverageScore();
+		imageFeaturesVector.put("leftEyeAverage", eyeAverages.get(0).toString());
+		imageFeaturesVector.put("rightEyeAverage", eyeAverages.get(1).toString());
+		// I DONT BELIEVE STD IS RELEVANT FOR MASKED EYES THEY ARE ALWAYS SPARSE PIXELS
+		
+		//Mouth//
+		reloadImageFromDisk();
+		features.get("mouth").run();
+		computeStatsForRect("mouth", "mouth");
+		
+		//Forehead//
+		reloadImageFromDisk();
+		features.get("forehead").run();
+		computeStatsForRect("forehead", "forehead");
+		String message = "";
+		for (String featureName :imageFeaturesVector.keySet()) {
+			if (featureName.equals("filePath"))continue;
+			message+=featureName+"="+Math.round(Double.parseDouble(imageFeaturesVector.get(featureName)))+"\n";
+		}
+		updateStatusText(message);
+//		updateStatusText("Nose Bridge = " + Math.round(noseBridgeAverage)+
+//						"\nCheekBonesLeft = "+Math.round(leftCheekAverage)
+//						+"\nCheekBonesRight = "+Math.round(rightCheekAverage)+
+//						"\nEyeLeft = "+Math.round(eyeAverages.get(0))
+//						+"\nEyeRight = "+Math.round(eyeAverages.get(1))
+//						+"\nMouth = "+Math.round(mouthAverage)
+//						+"\nForeHead = "+Math.round(foreheadAverage)
+//						+"\nSymmetry = "+symmetryX);
+		
+	}
+	
+	
+	
+	public ArrayList<Double> eyesAverageScore() {
+		ImageConvolutionMask mask 		= new ImageConvolutionMask(loadedImage, loadedImage.size().width, loadedImage.size().height, 3);
+		
+		mask.loadedImage				= loadedImage;
+		ArrayList<Integer> roi1			= featuresRoIs.get("eyeRight");
+		ArrayList<Integer> roi2			= featuresRoIs.get("eyeLeft");
+		
+		LinkedHashMap<ArrayList<Integer>,Double> pixelsInRect = mask.getRect(roi1.get(0),roi1.get(1),roi1.get(2),roi1.get(3));
+		boolean isRightEyeConstant		= mask.checkifRectIsConstantIntensity(pixelsInRect);
+		double rightIntensity			= mask.computeAverageForRect(pixelsInRect);
+		pixelsInRect					= mask.getRect(roi2.get(0),roi2.get(1),roi2.get(2),roi2.get(3));
+		boolean isLeftEyeConstant		= mask.checkifRectIsConstantIntensity(pixelsInRect);
+		double leftIntensity			= mask.computeAverageForRect(pixelsInRect);
+		
+		if (isLeftEyeConstant | isRightEyeConstant) {
+			return new ArrayList<Double>() {{add(0.0);add(0.0);}};
+		}
+		
+		return new ArrayList<Double>() {{add(leftIntensity);add(rightIntensity);}};
+	}	
+	
+	public ArrayList<Double> cheekBonesAverageScore() {
+		ImageConvolutionMask mask 		= new ImageConvolutionMask(loadedImage, loadedImage.size().width, loadedImage.size().height, 3);
+		mask.loadedImage				= loadedImage;
+		ArrayList<Integer> roi1			= featuresRoIs.get("cheekBonesRight");
+		ArrayList<Integer> roi2			= featuresRoIs.get("cheekBonesLeft");
+		
+		LinkedHashMap<ArrayList<Integer>,Double> pixelsInRect = mask.getRect(roi1.get(0),roi1.get(1),roi1.get(2),roi1.get(3));		
+		double rightIntensity			= mask.computeAverageForRectWithThreshold(pixelsInRect,0,255);
+		pixelsInRect					= mask.getRect(roi2.get(0),roi2.get(1),roi2.get(2),roi2.get(3));
+		double leftIntensity			= mask.computeAverageForRectWithThreshold(pixelsInRect,0,255);
+		
+		
+		return new ArrayList<Double>() {{add(leftIntensity);add(rightIntensity);}};
+	}
+
+	public double stdScoreForROI(String roiName,double average) {
+		ImageConvolutionMask mask 		= new ImageConvolutionMask(loadedImage, loadedImage.size().width, loadedImage.size().height, 3);
+		mask.loadedImage				= loadedImage;
+		ArrayList<Integer> roi			= featuresRoIs.get(roiName);
+		LinkedHashMap<ArrayList<Integer>,Double> pixelsInRect = mask.getRect(roi.get(0),roi.get(1),roi.get(2),roi.get(3));		
+		double totalIntensity			= mask.computeDeviationForRect(pixelsInRect, average);	
+		return totalIntensity;
+	}	
+	
+	public double momentumScoreForROI(String roiName) {
+		ImageConvolutionMask mask 		= new ImageConvolutionMask(loadedImage, loadedImage.size().width, loadedImage.size().height, 3);
+		mask.loadedImage				= loadedImage;
+		ArrayList<Integer> roi			= featuresRoIs.get(roiName);
+		LinkedHashMap<ArrayList<Integer>,Double> pixelsInRect = mask.getRect(roi.get(0),roi.get(1),roi.get(2),roi.get(3));		
+		double totalIntensity			= mask.compute1MomentumForRect(pixelsInRect);	
+		return totalIntensity;
+	}
+	
+	public double averageScoreForROI(String roiName) {
+		ImageConvolutionMask mask 		= new ImageConvolutionMask(loadedImage, loadedImage.size().width, loadedImage.size().height, 3);
+		mask.loadedImage				= loadedImage;
+		ArrayList<Integer> roi			= featuresRoIs.get(roiName);
+		LinkedHashMap<ArrayList<Integer>,Double> pixelsInRect = mask.getRect(roi.get(0),roi.get(1),roi.get(2),roi.get(3));		
+		double totalIntensity			= mask.computeAverageForRect(pixelsInRect);	
+		return totalIntensity;
+	}	
+	
+	
+	public double checkSymmetryXScore() {
 		ImageConvolutionMask mask 		= new ImageConvolutionMask(loadedImage, loadedImage.size().width, loadedImage.size().height, 3);
 		mask.loadedImage				= loadedImage;
 		updateStatusText("SymmetryX score " +mask.calculateSymmetryX());
-		
+		return mask.calculateSymmetryX();
 	}
 	public void test5() {
 		
@@ -305,16 +602,20 @@ public class MainController {
 
 	public void highlightRect(int x, int y, int width, int height) {
 		ImageConvolutionMask mask 		= new ImageConvolutionMask(loadedImage, loadedImage.size().width, loadedImage.size().height, 3);
+//		System.out.println("IMAGE DEPTH = "+ loadedImage.depth() + " IMAGE TYPE = "+loadedImage.type());
+//		Imgproc.cvtColor(loadedImage.clone(), loadedImage, 0);
+		if (loadedImage.type()==6) {
+			loadedImage.convertTo(loadedImage, 16);
+			Imgproc.cvtColor(loadedImage, loadedImage, Imgproc.COLOR_GRAY2BGR);
+		}
 		mask.loadedImage				= loadedImage;		
 		LinkedHashMap<ArrayList<Integer>,Double> pixelsInRect = mask.getRect(x, y, width, height);		
-		double totalIntensity			= mask.computeAverageForRect(pixelsInRect);
-		System.out.println(pixelsInRect);
+//		System.out.println(pixelsInRect);
 		for (ArrayList<Integer> pixelPos : pixelsInRect.keySet()) {
 			double [] p = {255,0,0};
-			loadedImage.put(pixelPos.get(1), pixelPos.get(0), 255);
+			loadedImage.put(pixelPos.get(1), pixelPos.get(0), p);
 		}
 		showLoadedImageInUi(loadedImage);
-		updateStatusText("Average Intensity In Rect = "+totalIntensity);
 	}
 	public void test4() {
 		path							= System.getProperty("user.dir").replace('\\', '/') + "/face00008.pgm";;
@@ -393,6 +694,7 @@ public class MainController {
 		System.out.println(bufferImage.get(14, 18)[0]);
 	}
 	public void loadImageFromDisk() {
+		currentZoomFactor				=10.0f;
         JFileChooser chooser = new JFileChooser();
         int returnName = chooser.showOpenDialog(null);
         
@@ -467,26 +769,59 @@ public class MainController {
 		}	
 		
 	}
-	public void featureA() {
+	
+	public void mouthBridge() {
+		enhance();
+		//Cheeks High lighter
+		String [] kernel = {"0","-3","3","0","-3","3","0","-3","3"};
+//		String [] kernel = {"-4","-4","-4","1","1","1","3","3","3"};
+		fillKernel(kernel);
+		applyConvolutionOperator();
+	}		
+	
+	public void noseBridge() {
+		enhance();
 		//Cheeks High lighter
 		String [] kernel = {"-1","-1","-1","0","0","0","1","1","1"};
 //		String [] kernel = {"-4","-4","-4","1","1","1","3","3","3"};
 		fillKernel(kernel);
 		applyConvolutionOperator();
+	}		
+	
+	public void foreheadPrepProcess() {
+		enhance();
+		//Cheeks High lighter
+		String [] kernel = {"3","-3","0","3","-3","0","3","-3","0"};
+		fillKernel(kernel);
+		applyConvolutionOperator();
 		
 	}		
-	public void featureC() {
+	public void cheekBonesPrepProcess() {
+		enhance();
 		//Cheeks High lighter
 		String [] kernel = {"-2","-2","0","-2","0","2","0","2","2"};
 		fillKernel(kernel);
 		applyConvolutionOperator();
 		
 	}	
-	public void featureB() {
-		String [] kernel = {"0","-1","0","-1","6","-1","0","1","0"};
+	public void invertImage() {
+		for (int col=0; col<loadedImage.size().width;col++) {
+			for (int row=0; row<loadedImage.size().height;row++) {
+				double pixelIntensity = loadedImage.get(row, col)[0];
+				if (pixelIntensity<0)pixelIntensity=0;
+				if (pixelIntensity>255)pixelIntensity=255;
+				loadedImage.put(row, col, 255-pixelIntensity);
+				
+			}		
+		}
+	}
+	public void eyesPreprocess() {
+		enhance();
+		String [] kernel = {"0","2","0","-1","6","-1","0","1","0"};
 		fillKernel(kernel);
 		applyConvolutionOperator();
-		
+		invertImage();
+		showLoadedImageInUi(loadedImage);
 	}
 	public void sobelX() {		
 		String [] kernel = {"-1","0","1","-2","0","2","-1","0","1"};
@@ -611,8 +946,8 @@ public class MainController {
 //		path							="C:\\Users\\ibrahim\\Desktop\\faceDetection\\testImages\\test1.jpg";
 		loadedImage						= Imgcodecs.imread(path);
 		showLoadedImageInUi(loadedImage);
-		System.out.println(SourceImgGRP.getChildren());
-		System.out.println(loadedImage);
+//		System.out.println(SourceImgGRP.getChildren());
+//		System.out.println(loadedImage);
 		updateStatusText("Reloaded Image From Disk !!!");
 		
 	}
@@ -625,8 +960,8 @@ public class MainController {
 		path							= directory +"/"+filesInDir[randomIndex];
 		System.out.println(path);
 		loadedImage						= Imgcodecs.imread(path);
-		System.out.println(loadedImage);
-		System.out.println(loadedImage.channels());
+//		System.out.println(loadedImage);
+//		System.out.println(loadedImage.channels());
 		
 		previewFeatureTest();
 		showLoadedImageInUi(loadedImage);
@@ -636,8 +971,7 @@ public class MainController {
 	}
 
 	public void previewFeatureTest() {
-		ToBufferImage.setSelected(true);
-		enhance();
+		ToBufferImage.setSelected(true);		
 		applyFeatureFromDropBox();
 //		highlightRect(6,4,6,6);
 //		highlightRect(7,1,4,8);
@@ -651,8 +985,8 @@ public class MainController {
 		path							= directory +"/"+filesInDir[randomIndex];
 		System.out.println(path);
 		loadedImage						= Imgcodecs.imread(path);
-		System.out.println(loadedImage);
-		System.out.println(loadedImage.channels());		
+//		System.out.println(loadedImage);
+//		System.out.println(loadedImage.channels());		
 		previewFeatureTest();
 		showLoadedImageInUi(loadedImage);
 		
@@ -708,48 +1042,59 @@ public class MainController {
 	}
 	public void loadEdgeDetectionImage() {	
 		effectIterations				=0;
+		currentZoomFactor				=1.0f;
 		path							= System.getProperty("user.dir").replace('\\', '/') + "/test-pattern.tif";
 		loadedImage						= Imgcodecs.imread(path);
 		showLoadedImageInUi(loadedImage);
-		System.out.println(SourceImgGRP.getChildren());
-		System.out.println(loadedImage);
+//		System.out.println(SourceImgGRP.getChildren());
+//		System.out.println(loadedImage);
 		updateStatusText("Loaded test-pattern.tif!");
 	}
 	
 	public void loadEnhanceImage() {	
 		effectIterations				=0;
+		currentZoomFactor				=1.0f;
 		path							= System.getProperty("user.dir").replace('\\', '/') + "/blurry-moon.tif";
 		loadedImage						= Imgcodecs.imread(path);
 		showLoadedImageInUi(loadedImage);
-		System.out.println(SourceImgGRP.getChildren());
-		System.out.println(loadedImage);
+//		System.out.println(SourceImgGRP.getChildren());
+//		System.out.println(loadedImage);
 		updateStatusText("Loaded blurry-moon.tif!");
 	}	
 	
 	public void loadHubbleImage() {	
 		effectIterations				=0;
+		currentZoomFactor				=1.0f;
 		path							= System.getProperty("user.dir").replace('\\', '/') + "/hubble.tif";
 		loadedImage						= Imgcodecs.imread(path);
 		showLoadedImageInUi(loadedImage);
-		System.out.println(SourceImgGRP.getChildren());
-		System.out.println(loadedImage);
+//		System.out.println(SourceImgGRP.getChildren());
+//		System.out.println(loadedImage);
 		updateStatusText("Loaded hubble.tif!");
 	}		
 	
 	public void loadDenoiseImage() {	
 		effectIterations				=0;
+		currentZoomFactor				=1.0f;
 		path							= System.getProperty("user.dir").replace('\\', '/') + "/ckt-board-saltpep.tif";
 		loadedImage						= Imgcodecs.imread(path);
 		showLoadedImageInUi(loadedImage);
-		System.out.println(SourceImgGRP.getChildren());
-		System.out.println(loadedImage);
+//		System.out.println(SourceImgGRP.getChildren());
+//		System.out.println(loadedImage);
 		updateStatusText("Loaded ckt-board-saltpep.tif!");
 	}	
 	
 	
 	public void applyFeatureFromDropBox() {
 		reloadImageFromDisk();
-		features.get(FeaturesDB.getValue()).run();
+		if(ApplyFaceFeatureCB.isSelected()) {
+			features.get(FeaturesDB.getValue()).run();
+		}
+		
+		if (ShowFeatureRoiCB.isSelected()) {
+			ArrayList<Integer> roi		= featuresRoIs.get(FeaturesDB.getValue());
+			highlightRect(roi.get(0), roi.get(1), roi.get(2), roi.get(3));
+		}
 	}
 	public void applyConvolutionOperator() {
 		effectIterations				+=1;
@@ -760,7 +1105,7 @@ public class MainController {
 		mask.convolutionKernel			= convolutionKernel;
 		bufferImage						= new Mat(loadedImage.height(), loadedImage.width(), 6);
 		
-		System.out.println(loadedImage.size().width);
+		
 		double newPixel;
 		for (int col=0; col<loadedImage.size().width;col++) {
 			for (int row=0; row<loadedImage.size().height;row++) {

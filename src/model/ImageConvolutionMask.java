@@ -121,14 +121,99 @@ public class ImageConvolutionMask {
 			rightSide				= range(middlePixel,loadedImage.width());
 		}
 		Collections.reverse(rightSide);
-		System.out.println(remainder);
-		System.out.println("Left  side column Count "+leftSide);
-		System.out.println("Right side column Count "+rightSide);
+//		System.out.println(remainder);
+//		System.out.println("Left  side column Count "+leftSide);
+//		System.out.println("Right side column Count "+rightSide);
 		imageHalves.add(leftSide);
 		imageHalves.add(rightSide);
 		return imageHalves;
 				
 	}
+	
+	
+	public boolean checkifRectIsConstantIntensity(LinkedHashMap<ArrayList<Integer>,Double> pixels) {
+		boolean isConstant				= false;
+		double totalPixels				= 0;
+		for (ArrayList<Integer> pixelPos :pixels.keySet()) {
+			double pixelIntensity		= pixels.get(pixelPos);
+			if (pixelIntensity<0)pixelIntensity=0;
+			if (pixelIntensity>255)pixelIntensity=255;
+			pixels.put(pixelPos, pixelIntensity);
+			totalPixels					+=pixelIntensity;
+			
+		}
+		
+		double diffFromWhite			= (pixels.size()*255)-totalPixels;
+		double diffFromBlack			= Math.abs(0-totalPixels);
+//		System.out.println("DiffWhite = "+ diffFromWhite+"  W="+(pixels.size()*255) + " T="+totalPixels);
+//		System.out.println("DiffBlack = "+ diffFromBlack+"  W="+Math.abs(0) + " T="+totalPixels);
+		if(diffFromWhite<255)isConstant=true;
+		if(diffFromBlack<255)isConstant=true;
+		
+		return isConstant;
+	}
+	
+	
+	public double computeAverageForRectWithThreshold(LinkedHashMap<ArrayList<Integer>,Double> pixels,int cieling,int floor) {
+		// Values less then floor becomes 0
+		// Values > ceiling becomes 255
+		double average					= 0;
+		for (ArrayList<Integer> pixelPos :pixels.keySet()) {
+			double pixelIntensity		= pixels.get(pixelPos);
+			if (pixelIntensity<floor)pixelIntensity=0;
+			if (pixelIntensity>cieling)pixelIntensity=255;
+			pixels.put(pixelPos, pixelIntensity);
+			average						+= pixelIntensity;
+		}
+//		System.out.print("Total Intensity = "+ average +" / "+pixels.size()+" = ");
+		average							= average/pixels.size();
+//		System.out.println(average);
+		return average;
+	}
+	
+
+	public double computeDeviationForRect(LinkedHashMap<ArrayList<Integer>,Double> pixels, double average) {
+		double totalDeviation			= 0;
+		for (ArrayList<Integer> pixelPos :pixels.keySet()) {
+			double pixelIntensity		= pixels.get(pixelPos);
+			if (pixelIntensity<0)pixelIntensity=0;
+			if (pixelIntensity>255)pixelIntensity=255;
+			pixels.put(pixelPos, pixelIntensity);
+			totalDeviation				+= Math.pow(pixelIntensity-average,2);
+		}
+//		System.out.print("Total Intensity = "+ average +" / "+pixels.size()+" = ");
+		totalDeviation					= totalDeviation/pixels.size();
+		double standardDeviation		= Math.sqrt(totalDeviation);
+//		System.out.println(average);
+		return standardDeviation;
+	}
+	
+	public double computeEuclideanDistance(ArrayList<Integer> pos1,ArrayList<Integer> pos2) {
+		double distance					= 0;
+		for (int index=0; index<pos1.size(); index++) {
+			distance					+= Math.pow(pos1.get(index)-pos2.get(index), 2);			
+		}
+		distance						=Math.sqrt(distance);
+		return distance;
+	}
+	public double compute1MomentumForRect(LinkedHashMap<ArrayList<Integer>,Double> pixels) {
+		double momentum					= 0;
+		ArrayList<Integer> topleftPixel = pixels.keySet().iterator().next();
+		for (ArrayList<Integer> pixelPos :pixels.keySet()) {
+			double pixelIntensity		= pixels.get(pixelPos);
+			if (pixelIntensity<0)pixelIntensity=0;
+			if (pixelIntensity>255)pixelIntensity=255;
+			pixels.put(pixelPos, pixelIntensity);
+			double distance				= computeEuclideanDistance(topleftPixel, pixelPos);
+			momentum					+= pixelIntensity*distance;
+		}
+//		System.out.print("Total Intensity = "+ average +" / "+pixels.size()+" = ");
+		momentum						= momentum/pixels.size();
+//		System.out.println(average);
+		return momentum;
+	}
+
+	
 	public double computeAverageForRect(LinkedHashMap<ArrayList<Integer>,Double> pixels) {
 		double average					= 0;
 		for (ArrayList<Integer> pixelPos :pixels.keySet()) {
@@ -138,9 +223,9 @@ public class ImageConvolutionMask {
 			pixels.put(pixelPos, pixelIntensity);
 			average						+= pixelIntensity;
 		}
-		System.out.print("Total Intensity = "+ average +" / "+pixels.size()+" = ");
+//		System.out.print("Total Intensity = "+ average +" / "+pixels.size()+" = ");
 		average							= average/pixels.size();
-		System.out.println(average);
+//		System.out.println(average);
 		return average;
 	}
 	public LinkedHashMap<ArrayList<Integer>,Double> getRect(int x, int y, int width, int height){

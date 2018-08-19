@@ -45,7 +45,9 @@
                                     <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#threshold" prefWidth="755.0" text="2.1 Threshold" />
                                     <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#loadRandomFaceImage" prefWidth="755.0" text="2.2 Load Next Face Image" />
                                     <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#loadRandomNoneFaceImage" prefWidth="755.0" text="2.2 Load Next None/Face Image" />
-                                    <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#threshold" prefWidth="755.0" text="2.2 Create Feature Vectors" />
+                                    <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#createVectorFeature" prefWidth="755.0" text="2.2 Preview Feature Vectors" />
+                                    <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#createVectorFeatures" prefWidth="755.0" text="2.2 Create ALL Feature Vectors" />
+                                    <TextArea fx:id="StatusTA" wrapText="true" VBox.vgrow="ALWAYS" />
                                  </children>
                               </VBox>
                            </content>
@@ -64,7 +66,7 @@
                               </ScrollPane>
                            </children>
                         </VBox>
-                        <VBox prefHeight="200.0" prefWidth="160.0">
+                        <VBox prefHeight="200.0" prefWidth="200.0">
                            <children>
                               <Label text="Kernel :." />
                               <GridPane fx:id="ConvMaskGridP" gridLinesVisible="true" maxHeight="190.0" maxWidth="160.0" minHeight="100.0" prefHeight="20.0">
@@ -90,21 +92,23 @@
                                     <TextField fx:id="Conv22TF" alignment="BASELINE_CENTER" text="1/9" GridPane.columnIndex="2" GridPane.rowIndex="2" />
                                  </children>
                               </GridPane>
-                              <VBox prefHeight="200.0" prefWidth="100.0">
+                              <VBox prefHeight="490.0" prefWidth="200.0">
                                  <children>
-                                    <ScrollPane minHeight="300.0" minWidth="200.0" prefHeight="400.0" prefWidth="400.0" VBox.vgrow="ALWAYS">
+                                    <ScrollPane minHeight="300.0" minWidth="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                                        <content>
-                                          <VBox prefHeight="396.0" prefWidth="193.0">
+                                          <VBox prefHeight="405.0" prefWidth="161.0">
                                              <children>
                                                 <CheckBox fx:id="ToBufferImage" mnemonicParsing="false" prefHeight="27.0" prefWidth="159.0" text="BufferImage" />
                                                 <ComboBox fx:id="FeaturesDB" onAction="#applyFeatureFromDropBox" prefWidth="150.0" visibleRowCount="15" />
+                                                <CheckBox fx:id="ApplyFaceFeatureCB" mnemonicParsing="false" onAction="#applyFeatureFromDropBox" prefHeight="27.0" prefWidth="159.0" text="Apply Face Feature?" />
+                                                <CheckBox fx:id="ShowFeatureRoiCB" mnemonicParsing="false" onAction="#applyFeatureFromDropBox" prefHeight="27.0" prefWidth="159.0" text="Show Feature ROI" />
                                                 <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#zoomIn" prefWidth="158.0" text="Zoom Inn " />
                                                 <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#zoomOut" prefWidth="158.0" text="Zoom Out" />
                                                 <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#sobelX" prefWidth="158.0" text="Sobel X" />
                                                 <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#sobelY" prefWidth="158.0" text="Sobel Y" />
                                                 <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#meanFilter" prefWidth="158.0" text="Mean Filter" />
                                                 <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#localBinaryPattern" prefWidth="158.0" text="LocalBinaryPattern" />
-                                                <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#checkSymmetryX" prefWidth="158.0" text="Check SymX" />
+                                                <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#checkSymmetryXScore" prefWidth="158.0" text="Check SymX" />
                                                 <Button alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#writeImage" prefWidth="158.0" text="Write Processed Image" />
                                              </children>
                                           </VBox>
@@ -112,7 +116,6 @@
                                     </ScrollPane>
                                  </children>
                               </VBox>
-                              <TextArea fx:id="StatusTA" maxWidth="-Infinity" prefHeight="244.0" prefWidth="160.0" wrapText="true" VBox.vgrow="ALWAYS" />
                            </children>
                         </VBox>
                      </children>
